@@ -265,11 +265,22 @@ var APP = {
 // STORAGE
 // ══════════════════════════════════
 function loadStorage() {
-  APP.apiKey = localStorage.getItem('ig_key') || '';
-  try { APP.ideas = JSON.parse(localStorage.getItem('ig_ideas') || '[]'); } catch(e) { APP.ideas = []; }
+  try {
+    APP.apiKey = localStorage.getItem('ig_key') || sessionStorage.getItem('ig_key') || '';
+    APP.ideas = JSON.parse(localStorage.getItem('ig_ideas') || '[]');
+  } catch(e) {
+    APP.apiKey = '';
+    APP.ideas = [];
+  }
 }
-function persistIdeas() { localStorage.setItem('ig_ideas', JSON.stringify(APP.ideas)); }
-function storeKey(k) { localStorage.setItem('ig_key', k); APP.apiKey = k; }
+function persistIdeas() {
+  try { localStorage.setItem('ig_ideas', JSON.stringify(APP.ideas)); } catch(e) {}
+}
+function storeKey(k) {
+  APP.apiKey = k;
+  try { localStorage.setItem('ig_key', k); } catch(e) {}
+  try { sessionStorage.setItem('ig_key', k); } catch(e) {}
+}
 
 // ══════════════════════════════════
 // UTILS
@@ -288,19 +299,27 @@ function hide(id) { var e = el(id); if (e) e.style.display = 'none'; }
 // GATE
 // ══════════════════════════════════
 function showGate(on) {
-  el('gate').classList.toggle('hidden', !on);
-  el('nav').style.display = on ? 'none' : '';
-  el('main').style.display = on ? 'none' : '';
+  var gate = el('gate');
+  var nav = el('nav');
+  var main = el('main');
+  if (on) {
+    gate.classList.remove('hidden');
+    if (nav) nav.style.display = 'none';
+    if (main) main.style.display = 'none';
+  } else {
+    gate.classList.add('hidden');
+    if (nav) nav.style.display = '';
+    if (main) main.style.display = '';
+  }
 }
 
 el('gate-submit').addEventListener('click', function() {
-  var k = el('gate-input').value.trim();
+  var k = (el('gate-input').value || '').trim();
   var errEl = el('gate-err');
+  errEl.textContent = '';
   if (!k) { errEl.textContent = 'Please enter your API key.'; return; }
   if (k.indexOf('sk-') !== 0) { errEl.textContent = 'Keys start with sk- — please check yours.'; return; }
-  errEl.textContent = '';
-  localStorage.setItem('ig_key', k);
-  APP.apiKey = k;
+  storeKey(k);
   showGate(false);
 });
 
@@ -753,14 +772,4 @@ function renderVault() {
   var list = el('vault-list');
 
   if (!APP.ideas.length) {
-    list.innerHTML = '<div class="empty-state"><div style="font-size:52px">📦</div><h2 style="font-size:22px;margin:12px 0 8px">Your vault is empty</h2><p>Head to ⚡ Forge, speak or type an idea, and save it here.</p></div>';
-    return;
-  }
-  if (!filtered.length) {
-    list.innerHTML = '<p style="color:var(--faint);text-align:center;padding:40px 0">No ideas match "' + esc(search) + '"</p>';
-    return;
-  }
-
-  list.innerHTML = filtered.map(function(idea) {
-    var cc = CPLX_COLORS[idea.complexity] || '#f97316';
-    var date = idea.creat
+    list.innerHTML = '<div class="empty-state"><div style="font-size:52px">📦</div><h2 style="font-size:22px;margin:12px 0 8px">Your vault is empty</h2><p>Head to ⚡ Forge, speak or type an idea, and save it
