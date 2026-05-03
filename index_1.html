@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="IdeaForge"/>
+<meta name="theme-color" content="#0a0a0f"/>
+<title>IdeaForge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--surface:#111118;--card:#16161f;--card2:#1c1c28;
+  --border:#252535;--border2:#1e1e2d;
+  --accent:#f97316;--accent2:#fbbf24;
+  --text:#eeedf0;--muted:#7a7990;--faint:#4a4960;
+  --success:#10b981;--info:#60a5fa;--purple:#a78bfa;--danger:#ef4444;
+  --r-sm:8px;--r-md:12px;--r-lg:18px;--r-xl:24px;
+}
+html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+h1,h2,h3,h4{font-family:'Syne',sans-serif;line-height:1.2}
+button{cursor:pointer;font-family:inherit;border:none;background:none}
+textarea,input{font-family:inherit}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+::selection{background:rgba(249,115,22,0.2)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+.fade-in{animation:fadeIn 0.35s ease both}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ─── Storage ───────────────────────────────────────────────
+const STORAGE_KEYS = { ideas: 'ideaforge_ideas_v2', apiKey: 'ideaforge_key_v1' };
+const loadIdeas = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.ideas) || '[]'); } catch { return []; } };
+const saveIdeas = (ideas) => localStorage.setItem(STORAGE_KEYS.ideas, JSON.stringify(ideas));
+const loadKey = () => localStorage.getItem(STORAGE_KEYS.apiKey) || '';
+const saveKey = (k) => localStorage.setItem(STORAGE_KEYS.apiKey, k);
+
+// ─── Claude API ─────────────────────────────────────────────
+async function callClaude(apiKey, system, userMsg) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-opus-4-5',
+      max_tokens: 2500,
+      system,
+      messages: [{ role: 'user', content: userMsg }],
+    }),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e?.error?.message || `API error ${res.status}`);
+  }
+  const data = await res.json();
+  return data.content[0].text;
+}
+
+const BRAINSTORM_SYSTEM = `You are IdeaForge AI — a sharp, creative product strategist and startup advisor.
+When given a rough app idea, respond ONLY with valid JSON, no markdown, no explanation outside the JSON object.
+
+Return exactly this structure:
+{
+  "name": "Catchy app name (1-3 words)",
+  "tagline": "One punchy sentence that sells the app (under 12 words)",
+  "pitch": "2-3 sentences. What it does, who it's for, why it matters now.",
+  "magicMoment": "A vivid, specific scenario — one paragraph describing the exact moment a real person would pull out this app and feel relieved or delighted. Make it emotional and relatable.",
+  "v1": "V1 core features as bullet points separated by newline character. Start each with a dash. 4-5 bullets max.",
+  "v2": "V2 additions as bullet points separated by newline character. Start each with a dash. 3-4 bullets.",
+  "future": "The bigger vision — where this could go in 3-5 years. 2-3 sentences about scale and potential.",
+  "complexity": "Low",
+  "complexityReason": "One sentence explaining why.",
+  "costEstimate": "$5,000–$15,000",
+  "costBreakdown": "2 sentences on where the money goes.",
+  "buildTime": "2–4 months",
+  "techStack": "Plain English tech stack suggestion. No jargon. e.g. A mobile app built with React Native, a simple Node.js server, and a Firebase database.",
+  "landingPageConcept": "2 sentences describing the visual feel — colors, mood, imagery, font style — for the landing page and logo.",
+  "claudeCodePrompt": "A detailed 150-200 word prompt someone could paste into Claude Code or claude.ai to start building this app. Be practical and specific: mention the V1 features, tech stack, key UX decisions, and any important details. Write it as a direct instruction starting with Build me..."
+}
+
+For complexity use only one of: Low, Medium, High, Very High`;
+
+async function brainstormIdea(apiKey, rawIdea) {
+  const text = await callClaude(apiKey, BRAINSTORM_SYSTEM,
+    `Here is my app idea: "${rawIdea}"\n\nBrainstorm this into a full product concept. Return only the JSON object, nothing else.`
+  );
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('Could not parse AI response. Please try again.');
+  return JSON.parse(match[0]);
+}
+
+async function amendSection(apiKey, idea, sectionKey, instruction) {
+  const system = `You are IdeaForge AI. You receive an existing app idea as JSON and an amendment instruction for a specific section.
+Return ONLY the complete updated JSON object with ALL fields preserved. Only change what the user asked for (and any fields that logically need to change as a result).
+No markdown, no explanation — just the JSON object.`;
+  const text = await callClaude(apiKey, system,
+    `Current idea:\n${JSON.stringify(idea, null, 2)}\n\nThe user wants to change the "${sectionKey}" section:\n"${instruction}"\n\nReturn the complete updated JSON.`
+  );
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('Could not parse response.');
+  return { ...idea, ...JSON.parse(match[0]) };
+}
+
+// ─── Voice Hook ─────────────────────────────────────────────
+function useVoice(onResult) {
+  const [listening, setListening] = useState(false);
+  const supported = ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
+  const ref = useRef(null);
+  const toggle = useCallback((baseText = '') => {
+    if (listening) { ref.current?.stop(); return; }
+    if (!supported) { alert('Voice not supported in this browser. Please use Chrome on Android or Safari on iPhone.'); return; }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const r = new SR();
+    ref.current = r;
+    r.continuous = false;
+    r.interimResults = true;
+    r.lang = 'en-US';
+    r.onstart = () => setListening(true);
+    r.onresult = (e) => {
+      let t = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
+      onResult((baseText + ' ' + t).trim(), e.results[e.results.length - 1].isFinal);
+    };
+    r.onerror = () => setListening(false);
+    r.onend = () => setListening(false);
+    r.start();
+  }, [listening, supported, onResult]);
+  return { listening, supported, toggle };
+}
+
+// ─── Shared Components ──────────────────────────────────────
+function GradientText({ children, style = {} }) {
+  return (
+    <span style={{
+      background: 'linear-gradient(135deg, #f97316, #fbbf24)',
+      WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text', ...style
+    }}>{children}</span>
+  );
+}
+
+function Btn({ children, onClick, disabled, variant = 'primary', style = {}, small = false }) {
+  const base = {
+    padding: small ? '6px 14px' : '12px 20px',
+    borderRadius: var => small ? 8 : 12,
+    fontSize: small ? 12 : 14,
+    fontWeight: 600,
+    fontFamily: "'DM Sans', sans-serif",
+    transition: 'all 0.15s',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.5 : 1,
+  };
+  const variants = {
+    primary: { background: 'linear-gradient(135deg, #f97316, #fbbf24)', color: '#fff', border: 'none' },
+    ghost: { background: 'transparent', color: '#7a7990', border: '1px solid #252535' },
+    danger: { background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' },
+    success: { background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' },
+    orange: { background: 'rgba(249,115,22,0.12)', color: '#f97316', border: '1px solid rgba(249,115,22,0.3)' },
+  };
+  return (
+    <button onClick={disabled ? undefined : onClick}
+      style={{ ...base, ...variants[variant], borderRadius: small ? 8 : 12, ...style }}>
+      {children}
+    </button>
+  );
+}
+
+function Tag({ children, color = '#f97316', bg }) {
+  return (
+    <span style={{
+      display: 'inline-block', padding: '3px 10px', borderRadius: 20,
+      fontSize: 11, fontWeight: 700, letterSpacing: '0.3px',
+      background: bg || `${color}22`, color,
+      border: `1px solid ${color}44`,
+    }}>{children}</span>
+  );
+}
+
+function SectionLabel({ icon, children }) {
+  return (
+    <div style={{
+      fontSize: 11, fontWeight: 700, letterSpacing: '1.2px',
+      textTransform: 'uppercase', color: '#f97316',
+      display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10,
+    }}>
+      <span>{icon}</span>{children}
+    </div>
+  );
+}
+
+function Card({ children, style = {} }) {
+  return (
+    <div style={{
+      background: '#16161f', border: '1px solid #252535',
+      borderRadius: 18, overflow: 'hidden', ...style
+    }}>{children}</div>
+  );
+}
+
+// ─── Voice+Text Input ────────────────────────────────────────
+function VoiceInput({ value, onChange, placeholder, onSubmit, submitLabel = 'Go', rows = 3, disabled = false }) {
+  const [interim, setInterim] = useState('');
+  const baseRef = useRef('');
+
+  const { listening, supported, toggle } = useVoice((transcript, isFinal) => {
+    if (isFinal) {
+      const v = (baseRef.current + ' ' + transcript).trim();
+      onChange(v); baseRef.current = v; setInterim('');
+    } else { setInterim(transcript); }
+  });
+
+  const display = listening && interim ? (value + ' ' + interim).trim() : value;
+
+  return (
+    <div style={{
+      background: '#111118', border: `1.5px solid ${listening ? '#f97316' : '#252535'}`,
+      borderRadius: 14, padding: '12px 14px', transition: 'border-color 0.2s',
+      boxShadow: listening ? '0 0 0 3px rgba(249,115,22,0.1)' : 'none',
+    }}>
+      <textarea
+        rows={rows} disabled={disabled}
+        placeholder={listening ? '🎙 Listening...' : placeholder}
+        value={display}
+        onChange={e => { onChange(e.target.value); baseRef.current = e.target.value; }}
+        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && onSubmit) { e.preventDefault(); onSubmit(); } }}
+        style={{
+          width: '100%', background: 'transparent', border: 'none', outline: 'none',
+          color: listening && interim ? '#f97316' : '#eeedf0',
+          fontSize: 15, lineHeight: 1.6, resize: 'none',
+          fontFamily: "'DM Sans', sans-serif",
+        }}
+      />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTop: '1px solid #1e1e2d' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {supported && (
+            <button
+              onClick={() => { baseRef.current = value; toggle(value); }}
+              disabled={disabled}
+              style={{
+                width: 36, height: 36, borderRadius: '50%', fontSize: 16,
+                background: listening ? '#f97316' : '#1c1c28',
+                border: listening ? '2px solid #f97316' : '1px solid #252535',
+                color: listening ? '#fff' : '#7a7990',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                animation: listening ? 'pulse 1.2s ease-in-out infinite' : 'none',
+                cursor: disabled ? 'not-allowed' : 'pointer',
+              }}
+            >🎙</button>
+          )}
+          {listening && <span style={{ fontSize: 12, color: '#f97316', fontWeight: 600 }}>Listening...</span>}
+        </div>
+        {onSubmit && (
+          <button
+            onClick={onSubmit}
+            disabled={disabled || !value.trim()}
+            style={{
+              padding: '8px 18px', borderRadius: 10, border: 'none',
+              background: value.trim() && !disabled ? 'linear-gradient(135deg,#f97316,#fbbf24)' : '#1c1c28',
+              color: value.trim() && !disabled ? '#fff' : '#4a4960',
+              fontFamily: "'Syne', sans-serif", fontSize: 13, fontWeight: 700,
+              cursor: value.trim() && !disabled ? 'pointer' : 'not-allowed',
+              letterSpacing: 0.3,
+            }}
+          >{submitLabel}</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Amend Box ───────────────────────────────────────────────
+function AmendBox({ sectionKey, sectionLabel, idea, apiKey, onAmended }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const apply = async () => {
+    if (!text.trim() || loading) return;
+    setLoading(true);
+    try {
+      const updated = await amendSection(apiKey, idea, sectionKey, text);
+      onAmended(updated);
+      setOpen(false); setText('');
+    } catch (e) { alert('Amendment failed: ' + e.message); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <button
+        onClick={() => { setOpen(!open); setText(''); }}
+        style={{
+          fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 8,
+          background: open ? 'rgba(249,115,22,0.15)' : 'transparent',
+          border: `1px solid ${open ? '#f97316' : '#252535'}`,
+          color: open ? '#f97316' : '#4a4960', cursor: 'pointer',
+          letterSpacing: '0.3px',
+        }}
+      >{open ? '✕ Cancel' : '✏ Amend'}</button>
+
+      {open && (
+        <div style={{ marginTop: 10, animation: 'fadeIn 0.2s ease' }}>
+          <VoiceInput
+            value={text} onChange={setText}
+            placeholder={`How should the ${sectionLabel} change? Speak or type...`}
+            onSubmit={apply}
+            submitLabel={loading ? 'Applying...' : 'Apply Change'}
+            rows={2} disabled={loading}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Section Block ───────────────────────────────────────────
+function SectionBlock({ icon, label, sectionKey, idea, apiKey, onAmended, children }) {
+  return (
+    <div style={{ borderTop: '1px solid #1e1e2d', padding: '16px 0' }}>
+      <SectionLabel icon={icon}>{label}</SectionLabel>
+      <div style={{ fontSize: 14, color: '#c8c7d4', lineHeight: 1.75 }}>{children}</div>
+      <AmendBox sectionKey={sectionKey} sectionLabel={label} idea={idea} apiKey={apiKey} onAmended={onAmended} />
+    </div>
+  );
+}
+
+function Bullets({ text }) {
+  if (!text) return null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {text.split('\n').filter(Boolean).map((line, i) => (
+        <div key={i} style={{ display: 'flex', gap: 8 }}>
+          <span style={{ color: '#f97316', flexShrink: 0, marginTop: 3 }}>▸</span>
+          <span>{line.replace(/^[-•▸]\s*/, '')}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const COMPLEXITY_COLORS = { Low: '#10b981', Medium: '#fbbf24', High: '#f97316', 'Very High': '#ef4444' };
+
+// ─── Full Idea View ──────────────────────────────────────────
+function IdeaView({ idea, apiKey, onAmended }) {
+  const [copied, setCopied] = useState(false);
+  const copyPrompt = () => {
+    navigator.clipboard.writeText(idea.claudeCodePrompt || '');
+    setCopied(true); setTimeout(() => setCopied(false), 2500);
+  };
+
+  return (
+    <div className="fade-in">
+      <Card>
+        {/* Header */}
+        <div style={{
+          padding: '22px 20px 18px',
+          background: 'linear-gradient(135deg, rgba(249,115,22,0.13), rgba(251,191,36,0.06))',
+          borderBottom: '1px solid #1e1e2d',
+        }}>
+          <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 30, fontWeight: 800, lineHeight: 1.1, marginBottom: 8 }}>
+            <GradientText>{idea.name}</GradientText>
+          </div>
+          <div style={{ fontSize: 15, fontStyle: 'italic', color: '#eeedf0', opacity: 0.88, lineHeight: 1.5, marginBottom: 12 }}>
+            "{idea.tagline}"
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {idea.complexity && <Tag color={COMPLEXITY_COLORS[idea.complexity]}>{idea.complexity} complexity</Tag>}
+              {idea.buildTime && <Tag color="#60a5fa">{idea.buildTime}</Tag>}
+            </div>
+            <span style={{ fontSize: 11, color: '#4a4960' }}>
+              {idea.createdAt ? new Date(idea.createdAt).toLocaleDateString() : ''}
+            </span>
+          </div>
+          <AmendBox sectionKey="name" sectionLabel="Name & Tagline" idea={idea} apiKey={apiKey} onAmended={onAmended} />
+        </div>
+
+        {/* Body sections */}
+        <div style={{ padding: '0 20px 20px' }}>
+
+          <SectionBlock icon="🎯" label="The Pitch" sectionKey="pitch" idea={idea} apiKey={apiKey} onAmended={onAmended}>
+            <p>{idea.pitch}</p>
+          </SectionBlock>
+
+          <SectionBlock icon="✨" label="Magic Moment" sectionKey="magicMoment" idea={idea} apiKey={apiKey} onAmended={onAmended}>
+            <p>{idea.magicMoment}</p>
+          </SectionBlock>
+
+          {/* Roadmap */}
+          <div style={{ borderTop: '1px solid #1e1e2d', padding: '16px 0' }}>
+            <SectionLabel icon="🗺">Roadmap</SectionLabel>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[
+                { key: 'v1', label: 'V1 — Launch', color: '#10b981' },
+                { key: 'v2', label: 'V2 — Growth', color: '#60a5fa' },
+                { key: 'future', label: 'Future Vision', color: '#a78bfa' },
+              ].map(({ key, label, color }) => (
+                <div key={key} style={{
+                  background: '#111118', border: '1px solid #1e1e2d',
+                  borderRadius: 12, padding: '12px 14px',
+                }}>
+                  <Tag color={color} style={{ marginBottom: 8 }}>{label}</Tag>
+                  <div style={{ fontSize: 13, color: '#c8c7d4', lineHeight: 1.7, marginTop: 8 }}>
+                    {key === 'future' ? <p>{idea[key]}</p> : <Bullets text={idea[key]} />}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <AmendBox sectionKey="v1" sectionLabel="Roadmap" idea={idea} apiKey={apiKey} onAmended={onAmended} />
+          </div>
+
+          {/* Cost & Complexity */}
+          <div style={{ borderTop: '1px solid #1e1e2d', padding: '16px 0' }}>
+            <SectionLabel icon="💰">Cost & Complexity</SectionLabel>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+              {[
+                { label: 'Complexity', value: idea.complexity, color: COMPLEXITY_COLORS[idea.complexity] || '#f97316' },
+                { label: 'Est. Cost', value: idea.costEstimate, color: '#fbbf24' },
+                { label: 'Build Time', value: idea.buildTime, color: '#60a5fa' },
+                { label: 'Tech', value: idea.techStack, color: '#a78bfa', small: true },
+              ].map(({ label, value, color, small }) => (
+                <div key={label} style={{
+                  background: '#111118', border: '1px solid #1e1e2d',
+                  borderRadius: 10, padding: '12px', textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: 11, color: '#7a7990', marginBottom: 4 }}>{label}</div>
+                  <div style={{
+                    fontFamily: small ? "'DM Sans', sans-serif" : "'Syne', sans-serif",
+                    fontWeight: 700, fontSize: small ? 11 : 14, color, lineHeight: 1.4,
+                  }}>{value}</div>
+                </div>
+              ))}
+            </div>
+            <p style={{ fontSize: 13, color: '#7a7990', lineHeight: 1.6 }}>{idea.complexityReason} {idea.costBreakdown}</p>
+            <AmendBox sectionKey="costEstimate" sectionLabel="Cost & Complexity" idea={idea} apiKey={apiKey} onAmended={onAmended} />
+          </div>
+
+          {/* Landing Page */}
+          <SectionBlock icon="🎨" label="Landing Page & Logo" sectionKey="landingPageConcept" idea={idea} apiKey={apiKey} onAmended={onAmended}>
+            <p style={{ marginBottom: 12 }}>{idea.landingPageConcept}</p>
+            <div style={{
+              padding: '12px 14px', background: '#111118',
+              border: '1px solid #1e1e2d', borderRadius: 10,
+              fontSize: 12, color: '#7a7990', lineHeight: 1.6,
+            }}>
+              💡 <strong style={{ color: '#eeedf0' }}>Generate your image:</strong> Copy this description and paste it into{' '}
+              <a href="https://www.midjourney.com" target="_blank" rel="noreferrer" style={{ color: '#f97316' }}>Midjourney</a>
+              {' '}or{' '}
+              <a href="https://chat.openai.com" target="_blank" rel="noreferrer" style={{ color: '#f97316' }}>ChatGPT's image tool</a>
+              {' '}with prompt: "App landing page hero for {idea.name}: {idea.landingPageConcept}"
+            </div>
+          </SectionBlock>
+
+          {/* Build Prompt */}
+          <div style={{ borderTop: '1px solid #1e1e2d', paddingTop: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <SectionLabel icon="🤖">Build Prompt for Claude</SectionLabel>
+              <button
+                onClick={copyPrompt}
+                style={{
+                  padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                  background: copied ? 'rgba(16,185,129,0.15)' : 'rgba(249,115,22,0.15)',
+                  border: `1px solid ${copied ? 'rgba(16,185,129,0.4)' : 'rgba(249,115,22,0.4)'}`,
+                  color: copied ? '#10b981' : '#f97316', cursor: 'pointer',
+                }}
+              >{copied ? '✓ Copied!' : '📋 Copy'}</button>
+            </div>
+            <div style={{
+              background: '#0d0d14', border: '1px solid #1e1e2d', borderRadius: 12,
+              padding: '14px 16px', fontSize: 13, color: '#c8c7d4', lineHeight: 1.75,
+              fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 240, overflowY: 'auto',
+            }}>
+              {idea.claudeCodePrompt}
+            </div>
+            <p style={{ fontSize: 12, color: '#4a4960', marginTop: 8, lineHeight: 1.5 }}>
+              Copy this and paste it into claude.ai or Claude Code to start building your app.
+            </p>
+            <AmendBox sectionKey="claudeCodePrompt" sectionLabel="Build Prompt" idea={idea} apiKey={apiKey} onAmended={onAmended} />
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ─── API Key Gate ────────────────────────────────────────────
+function ApiKeyGate({ onSave }) {
+  const [key, setKey] = useState('');
+  const [err, setErr] = useState('');
+
+  const submit = () => {
+    if (!key.trim()) { setErr('Please enter your API key.'); return; }
+    if (!key.trim().startsWith('sk-ant-')) { setErr('That doesn\'t look right. Anthropic keys start with sk-ant-'); return; }
+    onSave(key.trim());
+  };
+
+  return (
+    <div style={{
+      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 24, background: 'var(--bg)',
+    }}>
+      <div style={{
+        background: '#16161f', border: '1px solid #252535', borderRadius: 24,
+        padding: '36px 28px', maxWidth: 420, width: '100%',
+      }}>
+        <div style={{
+          fontFamily: "'Syne', sans-serif", fontSize: 34, fontWeight: 800, marginBottom: 6,
+          background: 'linear-gradient(135deg,#f97316,#fbbf24)',
+          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+        }}>IdeaForge ⚡</div>
+        <p style={{ color: '#7a7990', fontSize: 14, lineHeight: 1.7, marginBottom: 8 }}>
+          Your personal AI-powered app idea studio. Speak or type a rough idea and get a full product concept instantly.
+        </p>
+        <p style={{ color: '#7a7990', fontSize: 14, lineHeight: 1.7, marginBottom: 24 }}>
+          To get started you need a free Anthropic API key. It stays on your device only — never shared anywhere.
+        </p>
+
+        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#7a7990', marginBottom: 8 }}>
+          Anthropic API Key
+        </label>
+        <input
+          type="password" placeholder="sk-ant-api03-..."
+          value={key} onChange={e => { setKey(e.target.value); setErr(''); }}
+          onKeyDown={e => e.key === 'Enter' && submit()}
+          style={{
+            width: '100%', background: '#111118',
+            border: `1px solid ${err ? '#ef4444' : '#252535'}`,
+            borderRadius: 12, padding: '14px 16px', color: '#eeedf0',
+            fontSize: 14, fontFamily: 'monospace', outline: 'none',
+            marginBottom: err ? 8 : 20, letterSpacing: '0.5px',
+          }}
+        />
+        {err && <p style={{ color: '#ef4444', fontSize: 13, marginBottom: 14 }}>{err}</p>}
+
+        <button onClick={submit} style={{
+          width: '100%', padding: 15,
+          background: 'linear-gradient(135deg,#f97316,#fbbf24)',
+          border: 'none', borderRadius: 12, color: '#fff',
+          fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 800,
+          cursor: 'pointer', letterSpacing: 0.3,
+        }}>Enter IdeaForge →</button>
+
+        <p style={{ marginTop: 16, fontSize: 12, color: '#4a4960', textAlign: 'center', lineHeight: 1.6 }}>
+          Get your free key at{' '}
+          <a href="https://console.anthropic.com" target="_blank" rel="noreferrer"
+            style={{ color: '#f97316', textDecoration: 'underline' }}>console.anthropic.com</a>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Forge Screen ─────────────────────────────────────────────
+function ForgeScreen({ apiKey, onSave }) {
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [loadMsg, setLoadMsg] = useState('');
+  const [result, setResult] = useState(null);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+
+  const msgs = ['Shaping your idea...', 'Finding the perfect name...', 'Mapping the roadmap...', 'Crunching the costs...', 'Writing your build prompt...', 'Almost there...'];
+
+  const forge = async () => {
+    if (!input.trim() || loading) return;
+    setLoading(true); setError(''); setResult(null); setSaved(false);
+    let i = 0; setLoadMsg(msgs[0]);
+    const iv = setInterval(() => { i = (i + 1) % msgs.length; setLoadMsg(msgs[i]); }, 2200);
+    try {
+      const idea = await brainstormIdea(apiKey, input.trim());
+      setResult({ ...idea, id: Date.now().toString(), rawIdea: input.trim(), createdAt: new Date().toISOString() });
+    } catch (e) {
+      setError(e.message || 'Something went wrong. Check your API key and try again.');
+    } finally { clearInterval(iv); setLoading(false); }
+  };
+
+  const handleAmend = (updated) => {
+    setResult(updated);
+    if (saved) { onSave(updated); }
+  };
+
+  return (
+    <div style={{ padding: '20px 16px 48px' }}>
+      {/* Hero */}
+      <div style={{ textAlign: 'center', padding: '20px 0 24px' }}>
+        <h1 style={{ fontSize: 27, fontWeight: 800, marginBottom: 8 }}>
+          What's your <GradientText>next big idea?</GradientText>
+        </h1>
+        <p style={{ color: '#7a7990', fontSize: 14 }}>
+          Speak or type it rough — IdeaForge shapes it into a full product concept.
+        </p>
+      </div>
+
+      <VoiceInput
+        value={input} onChange={setInput}
+        placeholder="e.g. An app that helps parents track their kids' reading habits and gives them rewards..."
+        onSubmit={forge}
+        submitLabel="⚡ Forge It"
+        rows={3} disabled={loading}
+      />
+
+      {/* Loading */}
+      {loading && (
+        <div style={{ textAlign: 'center', padding: '56px 24px' }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: '50%', margin: '0 auto 20px',
+            border: '3px solid #252535', borderTopColor: '#f97316',
+            animation: 'spin 0.75s linear infinite',
+          }} />
+          <p style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 16, color: '#eeedf0', marginBottom: 6 }}>{loadMsg}</p>
+          <p style={{ color: '#4a4960', fontSize: 13 }}>The AI is thinking deeply about your idea...</p>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div style={{
+          marginTop: 16, padding: '14px 16px',
+          background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+          borderRadius: 12, color: '#ef4444', fontSize: 14,
+        }}>⚠ {error}</div>
+      )}
+
+      {/* Result */}
+      {result && !loading && (
+        <div style={{ marginTop: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 800 }}>Your Concept ✨</h2>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Btn
+                variant={saved ? 'success' : 'orange'}
+                small
+                onClick={() => { onSave(result); setSaved(true); }}
+                disabled={saved}
+              >{saved ? '✓ Saved to Vault' : '💾 Save to Vault'}</Btn>
+            </div>
+          </div>
+
+          <IdeaView idea={result} apiKey={apiKey} onAmended={handleAmend} />
+
+          <div style={{ textAlign: 'center', marginTop: 20 }}>
+            <Btn variant="ghost" onClick={() => { setResult(null); setInput(''); setSaved(false); }}>
+              ⚡ Forge another idea
+            </Btn>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Vault Screen ─────────────────────────────────────────────
+function VaultScreen({ ideas, onOpen, onDelete }) {
+  const [search, setSearch] = useState('');
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  const filtered = ideas.filter(idea =>
+    !search || [idea.name, idea.tagline, idea.rawIdea, idea.pitch].some(f => f?.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  if (ideas.length === 0) return (
+    <div style={{ padding: '64px 24px', textAlign: 'center' }}>
+      <div style={{ fontSize: 52, marginBottom: 16 }}>📦</div>
+      <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Your vault is empty</h2>
+      <p style={{ color: '#7a7990', fontSize: 14, lineHeight: 1.7 }}>
+        Head to the ⚡ Forge tab, speak or type an idea,<br />and save it here to build your collection.
+      </p>
+    </div>
+  );
+
+  return (
+    <div style={{ padding: '20px 16px 48px' }}>
+      <div style={{ marginBottom: 18 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 3 }}>Your Ideas</h2>
+        <p style={{ color: '#7a7990', fontSize: 13 }}>{ideas.length} idea{ideas.length !== 1 ? 's' : ''} saved</p>
+      </div>
+
+      {/* Search */}
+      <div style={{ position: 'relative', marginBottom: 16 }}>
+        <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 15, pointerEvents: 'none' }}>🔍</span>
+        <input
+          type="text" placeholder="Search your ideas..."
+          value={search} onChange={e => setSearch(e.target.value)}
+          style={{
+            width: '100%', background: '#111118', border: '1px solid #252535',
+            borderRadius: 12, padding: '12px 14px 12px 38px', color: '#eeedf0',
+            fontSize: 14, outline: 'none', fontFamily: "'DM Sans', sans-serif",
+          }}
+        />
+      </div>
+
+      {filtered.length === 0 ? (
+        <p style={{ color: '#4a4960', textAlign: 'center', padding: '40px 0' }}>No ideas match "{search}"</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {filtered.map(idea => (
+            <div key={idea.id} style={{
+              background: '#16161f', border: '1px solid #252535', borderRadius: 16, padding: 16,
+              cursor: 'pointer', transition: 'all 0.15s',
+            }}
+              onClick={() => onOpen(idea)}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#f97316'; e.currentTarget.style.background = '#1c1c28'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = '#252535'; e.currentTarget.style.background = '#16161f'; }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ flex: 1, paddingRight: 8 }}>
+                  <div style={{
+                    fontFamily: "'Syne', sans-serif", fontSize: 19, fontWeight: 800, lineHeight: 1.2, marginBottom: 4,
+                    background: 'linear-gradient(135deg,#f97316,#fbbf24)',
+                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                  }}>{idea.name}</div>
+                  <div style={{ fontSize: 13, color: '#7a7990', fontStyle: 'italic', marginBottom: 10, lineHeight: 1.5 }}>
+                    {idea.tagline}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {idea.complexity && <Tag color={COMPLEXITY_COLORS[idea.complexity] || '#f97316'}>{idea.complexity}</Tag>}
+                    {idea.costEstimate && <Tag color="#fbbf24">{idea.costEstimate}</Tag>}
+                    <Tag color="#4a4960" bg="#1e1e2d">{new Date(idea.createdAt).toLocaleDateString()}</Tag>
+                  </div>
+                </div>
+                <button
+                  onClick={e => { e.stopPropagation(); setConfirmDel(idea.id); }}
+                  style={{ background: 'none', border: 'none', fontSize: 16, color: '#4a4960', padding: 4, cursor: 'pointer', flexShrink: 0 }}
+                >🗑</button>
+              </div>
+
+              {confirmDel === idea.id && (
+                <div onClick={e => e.stopPropagation()} style={{
+                  marginTop: 12, padding: '12px 14px',
+                  background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+                  borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                }}>
+                  <span style={{ fontSize: 13, color: '#ef4444' }}>Delete "{idea.name}"?</span>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Btn variant="ghost" small onClick={() => setConfirmDel(null)}>Cancel</Btn>
+                    <Btn variant="danger" small onClick={() => { onDelete(idea.id); setConfirmDel(null); }}>Delete</Btn>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Detail Screen ────────────────────────────────────────────
+function DetailScreen({ idea, apiKey, onUpdate, onDelete, onBack }) {
+  return (
+    <div style={{ padding: '16px 16px 48px' }}>
+      <button onClick={onBack} style={{
+        background: 'none', border: 'none', color: '#7a7990', fontSize: 14,
+        cursor: 'pointer', padding: '8px 0', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6,
+      }}>← Back to Vault</button>
+
+      <IdeaView idea={idea} apiKey={apiKey} onAmended={(updated) => { onUpdate(updated); }} />
+
+      <div style={{ textAlign: 'center', marginTop: 24 }}>
+        <Btn variant="danger" onClick={() => {
+          if (window.confirm(`Delete "${idea.name}"? This cannot be undone.`)) onDelete(idea.id);
+        }}>🗑 Delete this idea</Btn>
+      </div>
+    </div>
+  );
+}
+
+// ─── Nav ──────────────────────────────────────────────────────
+function Nav({ screen, go, count, onSettings }) {
+  return (
+    <nav style={{
+      position: 'sticky', top: 0, zIndex: 100,
+      background: 'rgba(10,10,15,0.93)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+      borderBottom: '1px solid #1e1e2d', height: 56, padding: '0 16px',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    }}>
+      <div onClick={() => go('forge')} style={{
+        fontFamily: "'Syne', sans-serif", fontSize: 20, fontWeight: 800, cursor: 'pointer',
+        background: 'linear-gradient(135deg,#f97316,#fbbf24)',
+        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', userSelect: 'none',
+      }}>IdeaForge ⚡</div>
+
+      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+        {[
+          { id: 'forge', label: '⚡ Forge' },
+          { id: 'vault', label: `📦 Vault${count > 0 ? ` (${count})` : ''}` },
+        ].map(t => (
+          <button key={t.id} onClick={() => go(t.id)} style={{
+            padding: '6px 14px', borderRadius: 20, fontSize: 13, fontWeight: 500,
+            background: (screen === t.id || (screen === 'detail' && t.id === 'vault')) ? '#f97316' : 'transparent',
+            color: (screen === t.id || (screen === 'detail' && t.id === 'vault')) ? '#fff' : '#7a7990',
+            border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+          }}>{t.label}</button>
+        ))}
+        <button onClick={onSettings} title="API Key Settings" style={{
+          background: 'none', border: 'none', color: '#4a4960', fontSize: 18, padding: '4px 6px', cursor: 'pointer',
+        }}>⚙</button>
+      </div>
+    </nav>
+  );
+}
+
+// ─── Root App ─────────────────────────────────────────────────
+function App() {
+  const [apiKey, setApiKey] = useState('');
+  const [showKeyGate, setShowKeyGate] = useState(false);
+  const [screen, setScreen] = useState('forge');
+  const [ideas, setIdeas] = useState([]);
+  const [selected, setSelected] = useState(null);
+
+  useEffect(() => {
+    const k = loadKey();
+    const i = loadIdeas();
+    setApiKey(k);
+    setIdeas(i);
+    if (!k) setShowKeyGate(true);
+  }, []);
+
+  const saveApiKey = (k) => { saveKey(k); setApiKey(k); setShowKeyGate(false); };
+
+  const saveIdea = (idea) => {
+    const updated = [idea, ...ideas.filter(i => i.id !== idea.id)];
+    setIdeas(updated); saveIdeas(updated);
+  };
+
+  const deleteIdea = (id) => {
+    const updated = ideas.filter(i => i.id !== id);
+    setIdeas(updated); saveIdeas(updated);
+    if (selected?.id === id) { setSelected(null); setScreen('vault'); }
+  };
+
+  const updateIdea = (idea) => {
+    const updated = ideas.map(i => i.id === idea.id ? idea : i);
+    setIdeas(updated); saveIdeas(updated); setSelected(idea);
+  };
+
+  const go = (s) => { setScreen(s); if (s !== 'detail') setSelected(null); };
+
+  if (showKeyGate) return <ApiKeyGate onSave={saveApiKey} />;
+
+  return (
+    <div style={{ minHeight: '100vh' }}>
+      <Nav
+        screen={screen}
+        go={go}
+        count={ideas.length}
+        onSettings={() => setShowKeyGate(true)}
+      />
+      <main style={{ maxWidth: 640, margin: '0 auto', width: '100%' }}>
+        {screen === 'forge' && <ForgeScreen apiKey={apiKey} onSave={saveIdea} />}
+        {screen === 'vault' && (
+          <VaultScreen
+            ideas={ideas}
+            onOpen={idea => { setSelected(idea); setScreen('detail'); }}
+            onDelete={deleteIdea}
+          />
+        )}
+        {screen === 'detail' && selected && (
+          <DetailScreen
+            idea={selected} apiKey={apiKey}
+            onUpdate={updateIdea} onDelete={deleteIdea}
+            onBack={() => go('vault')}
+          />
+        )}
+      </main>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
