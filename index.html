@@ -300,7 +300,10 @@ el('gate-submit').addEventListener('click', function() {
   if (k.indexOf('sk-') !== 0) { errEl.textContent = 'Keys start with sk- — please check yours.'; return; }
   errEl.textContent = '';
   storeKey(k);
+  // Double-write to make sure it persists across sessions
+  try { localStorage.setItem('ig_key', k); } catch(e) {}
   showGate(false);
+  goScreen('forge');
 });
 
 el('gate-input').addEventListener('keydown', function(e) { if (e.key === 'Enter') el('gate-submit').click(); });
@@ -573,9 +576,11 @@ function buildCard(idea, ctx) {
   h += section('💰','Cost & Complexity','costEstimate',ctx, cost);
 
   // Landing page
-  var lp = '<p style="margin-bottom:12px">' + esc(idea.landingPageConcept||'') + '</p>';
-  lp += '<div class="info-box">💡 <strong style="color:var(--text)">Generate your image:</strong> Paste into <a href="https://www.midjourney.com" target="_blank">Midjourney</a> or <a href="https://chat.openai.com" target="_blank">ChatGPT</a> — prompt: "App landing page for ' + esc(idea.name) + ': ' + esc(idea.landingPageConcept||'') + '"</div>';
-  h += section('🎨','Landing Page & Logo','landingPageConcept',ctx, lp);
+  var lpbody = '<p style="margin-bottom:14px">' + esc(idea.landingPageConcept||'') + '</p>';
+  lpbody += '<div id="lp-preview-' + ctx + '" style="display:none;margin-bottom:10px;border-radius:12px;overflow:hidden;border:1px solid var(--border2);min-height:220px"></div>';
+  lpbody += '<div id="lp-spin-' + ctx + '" style="display:none;text-align:center;padding:20px;color:var(--muted);font-size:13px"><div style="width:28px;height:28px;border-radius:50%;border:2px solid var(--border);border-top-color:var(--accent);animation:spin .75s linear infinite;margin:0 auto 10px"></div>Designing your landing page preview...</div>';
+  lpbody += '<button id="lp-gen-' + ctx + '" style="width:100%;padding:12px;border-radius:10px;background:linear-gradient(135deg,rgba(249,115,22,0.12),rgba(251,191,36,0.08));border:1px solid rgba(249,115,22,0.3);color:var(--accent);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">🎨 Generate Landing Page Preview</button>';
+  h += section('🎨','Landing Page & Logo','landingPageConcept',ctx, lpbody);
 
   // Build prompt
   h += '<div class="sec">';
@@ -674,10 +679,60 @@ function bindCard(ctx, idea) {
       });
     });
   });
-}
 
-// ══════════════════════════════════
-// VAULT
+  // Landing page generator
+  var lpGenBtn = el('lp-gen-' + ctx);
+  if (lpGenBtn) {
+    lpGenBtn.addEventListener('click', function() {
+      var btn = this;
+      var spinEl = el('lp-spin-' + ctx);
+      var previewEl = el('lp-preview-' + ctx);
+      btn.style.display = 'none';
+      spinEl.style.display = 'block';
+
+      var LP_SYSTEM = 'You are a world-class UI designer. Generate a complete self-contained HTML landing page for a mobile app. The HTML must:\n- Use only inline styles, no external CSS or JS\n- Be visually stunning with a hero section, app name, tagline, 3 key features, and a call to action button\n- Include a simple SVG logo mark that fits the app concept\n- Use beautiful typography with Google Fonts loaded inline\n- Have a dark or light theme that fits the brand\n- Be mobile-first and look great at 380px wide\n- Return ONLY the raw HTML, no explanation, no markdown fences';
+
+      var lpMsg = 'Create a landing page for this app:\nName: ' + idea.name + '\nTagline: ' + idea.tagline + '\nPitch: ' + idea.pitch + '\nVisual concept: ' + idea.landingPageConcept + '\nKey V1 features: ' + idea.v1 + '\n\nReturn only the HTML.';
+
+      fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + APP.apiKey },
+        body: JSON.stringify({ model: 'gpt-4o', max_tokens: 3000, messages: [{ role: 'system', content: LP_SYSTEM }, { role: 'user', content: lpMsg }] }),
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        spinEl.style.display = 'none';
+        var html = d.choices[0].message.content;
+        // Strip markdown fences if present
+        html = html.replace(/^```html?\n?/i,'').replace(/```$/,'').trim();
+        // Render in iframe so it's sandboxed
+        var iframe = document.createElement('iframe');
+        iframe.style.cssText = 'width:100%;height:420px;border:none;border-radius:12px;display:block';
+        iframe.setAttribute('sandbox', 'allow-same-origin');
+        previewEl.innerHTML = '';
+        previewEl.appendChild(iframe);
+        previewEl.style.display = 'block';
+        var doc = iframe.contentDocument || iframe.contentWindow.document;
+        doc.open(); doc.write(html); doc.close();
+        // Regenerate button
+        var regenBtn = document.createElement('button');
+        regenBtn.textContent = '🔄 Regenerate Preview';
+        regenBtn.style.cssText = 'margin-top:10px;width:100%;padding:10px;border-radius:10px;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit';
+        regenBtn.addEventListener('click', function() {
+          previewEl.style.display = 'none'; previewEl.innerHTML = '';
+          this.remove();
+          btn.style.display = 'block';
+        });
+        previewEl.after(regenBtn);
+      })
+      .catch(function() {
+        spinEl.style.display = 'none';
+        btn.style.display = 'block';
+        btn.textContent = '⚠ Failed — tap to retry';
+      });
+    });
+  }
+}
 // ══════════════════════════════════
 function upsertIdea(idea) {
   APP.ideas = [idea].concat(APP.ideas.filter(function(i){ return i.id !== idea.id; }));
@@ -708,89 +763,4 @@ function renderVault() {
     return;
   }
 
-  list.innerHTML = filtered.map(function(idea) {
-    var cc = CPLX_COLORS[idea.complexity] || '#f97316';
-    var date = idea.createdAt ? new Date(idea.createdAt).toLocaleDateString() : '';
-    var confirmHtml = APP.confirmDel === idea.id
-      ? '<div class="confirm-row"><span>Delete "' + esc(idea.name) + '"?</span><div style="display:flex;gap:8px">' +
-          '<button style="padding:5px 12px;border-radius:8px;border:1px solid var(--border);color:var(--muted);font-size:12px;background:transparent;cursor:pointer" data-cancel>Cancel</button>' +
-          '<button style="padding:5px 12px;border-radius:8px;border:1px solid rgba(239,68,68,.3);color:var(--red);font-size:12px;background:rgba(239,68,68,.1);cursor:pointer" data-confirm="' + idea.id + '">Delete</button>' +
-        '</div></div>' : '';
-    return '<div class="idea-row" data-id="' + idea.id + '">' +
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start">' +
-        '<div style="flex:1;padding-right:8px">' +
-          '<div class="ir-name">' + esc(idea.name) + '</div>' +
-          '<div class="ir-tagline">' + esc(idea.tagline) + '</div>' +
-          '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
-            (idea.complexity ? tag(idea.complexity, cc) : '') +
-            (idea.costEstimate ? tag(idea.costEstimate, '#fbbf24') : '') +
-            (date ? '<span class="tag" style="background:#1e1e2d;color:var(--faint)">' + date + '</span>' : '') +
-          '</div>' +
-        '</div>' +
-        '<button class="del-btn" data-del="' + idea.id + '">🗑</button>' +
-      '</div>' + confirmHtml + '</div>';
-  }).join('');
-
-  list.querySelectorAll('.idea-row').forEach(function(row) {
-    row.addEventListener('click', function(e) {
-      if (e.target.closest('.del-btn') || e.target.closest('.confirm-row')) return;
-      var id = row.dataset.id;
-      var idea = APP.ideas.find(function(i){ return i.id === id; });
-      if (idea) { APP.selectedId = id; openDetail(idea); }
-    });
-  });
-  list.querySelectorAll('.del-btn').forEach(function(b) {
-    b.addEventListener('click', function(e) { e.stopPropagation(); APP.confirmDel = b.dataset.del; renderVault(); });
-  });
-  list.querySelectorAll('[data-cancel]').forEach(function(b) {
-    b.addEventListener('click', function(e) { e.stopPropagation(); APP.confirmDel = null; renderVault(); });
-  });
-  list.querySelectorAll('[data-confirm]').forEach(function(b) {
-    b.addEventListener('click', function(e) {
-      e.stopPropagation();
-      removeIdea(b.dataset.confirm);
-      APP.confirmDel = null;
-      renderVault();
-    });
-  });
-}
-
-el('vault-search').addEventListener('input', renderVault);
-
-// ══════════════════════════════════
-// DETAIL
-// ══════════════════════════════════
-function openDetail(idea) {
-  el('detail-card').innerHTML = buildCard(idea, 'detail');
-  bindCard('detail', idea);
-  goScreen('detail');
-}
-
-function renderDetail() {
-  if (!APP.selectedId) { goScreen('vault'); return; }
-  var idea = APP.ideas.find(function(i){ return i.id === APP.selectedId; });
-  if (!idea) { goScreen('vault'); return; }
-  el('detail-card').innerHTML = buildCard(idea, 'detail');
-  bindCard('detail', idea);
-}
-
-el('back-btn').addEventListener('click', function() { goScreen('vault'); });
-
-el('detail-del').addEventListener('click', function() {
-  var idea = APP.ideas.find(function(i){ return i.id === APP.selectedId; });
-  if (!idea) return;
-  if (window.confirm('Delete "' + idea.name + '"? This cannot be undone.')) {
-    removeIdea(APP.selectedId);
-    APP.selectedId = null;
-    goScreen('vault');
-  }
-});
-
-// ══════════════════════════════════
-// INIT
-// ══════════════════════════════════
-loadStorage();
-showGate(!APP.apiKey);
-</script>
-</body>
-</html>
+  list.innerHTML = filtered.map(f
