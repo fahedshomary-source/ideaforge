@@ -299,11 +299,9 @@ el('gate-submit').addEventListener('click', function() {
   if (!k) { errEl.textContent = 'Please enter your API key.'; return; }
   if (k.indexOf('sk-') !== 0) { errEl.textContent = 'Keys start with sk- — please check yours.'; return; }
   errEl.textContent = '';
-  storeKey(k);
-  // Double-write to make sure it persists across sessions
-  try { localStorage.setItem('ig_key', k); } catch(e) {}
+  localStorage.setItem('ig_key', k);
+  APP.apiKey = k;
   showGate(false);
-  goScreen('forge');
 });
 
 el('gate-input').addEventListener('keydown', function(e) { if (e.key === 'Enter') el('gate-submit').click(); });
@@ -763,4 +761,6 @@ function renderVault() {
     return;
   }
 
-  list.innerHTML = filtered.map(f
+  list.innerHTML = filtered.map(function(idea) {
+    var cc = CPLX_COLORS[idea.complexity] || '#f97316';
+    var date = idea.creat
