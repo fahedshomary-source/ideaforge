@@ -393,34 +393,25 @@ function stopVoice() {
 }
 
 // ══════════════════════════════════
-// OPENAI API
+// ANTHROPIC API
 // ══════════════════════════════════
-var SYS_BRAINSTORM = 'You are IdeaForge AI, a creative product strategist. Respond ONLY with valid JSON. No markdown code fences, no text outside the JSON. Return exactly this structure: {"name":"App name 1-3 words","tagline":"Punchy sentence under 12 words","pitch":"2-3 sentences: what it does, who its for, why now","magicMoment":"One vivid paragraph of the exact moment someone needs this app","v1":"Core V1 features, each on its own line starting with a dash, 4-5 items","v2":"V2 additions, each line starting with a dash, 3-4 items","future":"Where this goes in 3-5 years, 2-3 sentences","complexity":"Low","complexityReason":"One sentence on why","costEstimate":"$X,000 to $Y,000","costBreakdown":"2 sentences on where money goes","buildTime":"X to Y months","techStack":"Plain English tech suggestion","landingPageConcept":"2 sentences on visual feel colors mood imagery for landing page and logo","claudeCodePrompt":"150-200 word prompt starting with Build me... to paste into Claude Code or ChatGPT to start building this app. Specific about V1 features tech stack and key UX."} For complexity use only: Low, Medium, High, or Very High';
-
-var SYS_AMEND = 'You are IdeaForge AI. You receive an existing app idea as JSON and an amendment instruction. Return ONLY the complete updated JSON with ALL fields preserved. Only change what was asked and anything logically connected. No markdown, no explanation, just the JSON object.';
-
 function callClaude(system, user, done) {
-  fetch('https://api.openai.com/v1/chat/completions', {
+  fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + APP.apiKey,
+      'x-api-key': APP.apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
     },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      max_tokens: 2500,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: user }
-      ],
-    }),
+    body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 2500, system: system, messages: [{ role: 'user', content: user }] }),
   })
   .then(function(r) {
     if (!r.ok) return r.json().then(function(e) { throw new Error(e && e.error ? e.error.message : 'API error ' + r.status); });
     return r.json();
   })
   .then(function(d) {
-    var text = d.choices[0].message.content;
+    var text = d.content[0].text;
     var m = text.match(/\{[\s\S]*\}/);
     if (!m) throw new Error('Could not parse AI response. Please try again.');
     done(null, JSON.parse(m[0]));
@@ -711,15 +702,20 @@ function bindCard(ctx, idea) {
 
       var lpMsg = 'Create a landing page for this app:\nName: ' + idea.name + '\nTagline: ' + idea.tagline + '\nPitch: ' + idea.pitch + '\nVisual concept: ' + idea.landingPageConcept + '\nKey V1 features: ' + idea.v1 + '\n\nReturn only the HTML.';
 
-      fetch('https://api.openai.com/v1/chat/completions', {
+      fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + APP.apiKey },
-        body: JSON.stringify({ model: 'gpt-4o', max_tokens: 3000, messages: [{ role: 'system', content: LP_SYSTEM }, { role: 'user', content: lpMsg }] }),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': APP.apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 3000, system: LP_SYSTEM, messages: [{ role: 'user', content: lpMsg }] }),
       })
       .then(function(r) { return r.json(); })
       .then(function(d) {
         spinEl.style.display = 'none';
-        var html = d.choices[0].message.content;
+        var html = d.content[0].text;
         // Strip markdown fences if present
         html = html.replace(/^```html?\n?/i,'').replace(/```$/,'').trim();
         // Render in iframe so it's sandboxed
@@ -862,7 +858,7 @@ el('detail-del').addEventListener('click', function() {
 // INIT
 // ══════════════════════════════════
 loadStorage();
-APP.apiKey = "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";
+APP.apiKey = "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";
 showGate(false);
 </script>
 </body>
