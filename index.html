@@ -164,7 +164,7 @@ a{color:var(--accent)}
   <div style="display:flex;gap:4px;align-items:center">
     <button class="ntab on" data-tab="forge">⚡ Forge</button>
     <button class="ntab" data-tab="vault">📦 Vault</button>
-    <button id="settings-btn" title="API Key">⚙</button>
+    <button id="settings-btn" title="API Key" style="display:none">⚙</button>
   </div>
 </nav>
 
@@ -772,4 +772,98 @@ function renderVault() {
   var list = el('vault-list');
 
   if (!APP.ideas.length) {
-    list.innerHTML = '<div class="empty-state"><div style="font-size:52px">📦</div><h2 style="font-size:22px;margin:12px 0 8px">Your vault is empty</h2><p>Head to ⚡ Forge, speak or type an idea, and save it
+    list.innerHTML = '<div class="empty-state"><div style="font-size:52px">📦</div><h2 style="font-size:22px;margin:12px 0 8px">Your vault is empty</h2><p>Head to ⚡ Forge, speak or type an idea, and save it here.</p></div>';
+    return;
+  }
+  if (!filtered.length) {
+    list.innerHTML = '<p style="color:var(--faint);text-align:center;padding:40px 0">No ideas match "' + esc(search) + '"</p>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(function(idea) {
+    var cc = CPLX_COLORS[idea.complexity] || '#f97316';
+    var date = idea.createdAt ? new Date(idea.createdAt).toLocaleDateString() : '';
+    var confirmHtml = APP.confirmDel === idea.id
+      ? '<div class="confirm-row"><span>Delete "' + esc(idea.name) + '"?</span><div style="display:flex;gap:8px">' +
+          '<button style="padding:5px 12px;border-radius:8px;border:1px solid var(--border);color:var(--muted);font-size:12px;background:transparent;cursor:pointer" data-cancel>Cancel</button>' +
+          '<button style="padding:5px 12px;border-radius:8px;border:1px solid rgba(239,68,68,.3);color:var(--red);font-size:12px;background:rgba(239,68,68,.1);cursor:pointer" data-confirm="' + idea.id + '">Delete</button>' +
+        '</div></div>' : '';
+    return '<div class="idea-row" data-id="' + idea.id + '">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start">' +
+        '<div style="flex:1;padding-right:8px">' +
+          '<div class="ir-name">' + esc(idea.name) + '</div>' +
+          '<div class="ir-tagline">' + esc(idea.tagline) + '</div>' +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+            (idea.complexity ? tag(idea.complexity, cc) : '') +
+            (idea.costEstimate ? tag(idea.costEstimate, '#fbbf24') : '') +
+            (date ? '<span class="tag" style="background:#1e1e2d;color:var(--faint)">' + date + '</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<button class="del-btn" data-del="' + idea.id + '">🗑</button>' +
+      '</div>' + confirmHtml + '</div>';
+  }).join('');
+
+  list.querySelectorAll('.idea-row').forEach(function(row) {
+    row.addEventListener('click', function(e) {
+      if (e.target.closest('.del-btn') || e.target.closest('.confirm-row')) return;
+      var id = row.dataset.id;
+      var idea = APP.ideas.find(function(i){ return i.id === id; });
+      if (idea) { APP.selectedId = id; openDetail(idea); }
+    });
+  });
+  list.querySelectorAll('.del-btn').forEach(function(b) {
+    b.addEventListener('click', function(e) { e.stopPropagation(); APP.confirmDel = b.dataset.del; renderVault(); });
+  });
+  list.querySelectorAll('[data-cancel]').forEach(function(b) {
+    b.addEventListener('click', function(e) { e.stopPropagation(); APP.confirmDel = null; renderVault(); });
+  });
+  list.querySelectorAll('[data-confirm]').forEach(function(b) {
+    b.addEventListener('click', function(e) {
+      e.stopPropagation();
+      removeIdea(b.dataset.confirm);
+      APP.confirmDel = null;
+      renderVault();
+    });
+  });
+}
+
+el('vault-search').addEventListener('input', renderVault);
+
+// ══════════════════════════════════
+// DETAIL
+// ══════════════════════════════════
+function openDetail(idea) {
+  el('detail-card').innerHTML = buildCard(idea, 'detail');
+  bindCard('detail', idea);
+  goScreen('detail');
+}
+
+function renderDetail() {
+  if (!APP.selectedId) { goScreen('vault'); return; }
+  var idea = APP.ideas.find(function(i){ return i.id === APP.selectedId; });
+  if (!idea) { goScreen('vault'); return; }
+  el('detail-card').innerHTML = buildCard(idea, 'detail');
+  bindCard('detail', idea);
+}
+
+el('back-btn').addEventListener('click', function() { goScreen('vault'); });
+
+el('detail-del').addEventListener('click', function() {
+  var idea = APP.ideas.find(function(i){ return i.id === APP.selectedId; });
+  if (!idea) return;
+  if (window.confirm('Delete "' + idea.name + '"? This cannot be undone.')) {
+    removeIdea(APP.selectedId);
+    APP.selectedId = null;
+    goScreen('vault');
+  }
+});
+
+// ══════════════════════════════════
+// INIT
+// ══════════════════════════════════
+loadStorage();
+APP.apiKey = "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";
+showGate(false);
+</script>
+</body>
+</html>
