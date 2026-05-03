@@ -173,12 +173,12 @@ a{color:var(--accent)}
   <div class="gate-card">
     <div class="gate-logo">IdeaForge ⚡</div>
     <p class="gate-p">Your personal AI-powered app idea studio. Speak or type a rough idea and get a full product concept instantly.</p>
-    <p class="gate-p">You need a free Anthropic API key. It is stored only on your device.</p>
-    <label class="gate-label">Anthropic API Key</label>
-    <input id="gate-input" type="password" placeholder="sk-ant-api03-..." autocomplete="off"/>
+    <p class="gate-p">You need an OpenAI API key. It is stored only on your device — never sent anywhere except OpenAI.</p>
+    <label class="gate-label">OpenAI API Key</label>
+    <input id="gate-input" type="password" placeholder="sk-..." autocomplete="off"/>
     <div id="gate-err"></div>
     <button id="gate-submit">Enter IdeaForge →</button>
-    <p class="gate-note">Get your free key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a><br/>Your key stays on your device only.</p>
+    <p class="gate-note">Get your key at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a><br/>Your key stays on your device only.</p>
   </div>
 </div>
 
@@ -297,7 +297,7 @@ el('gate-submit').addEventListener('click', function() {
   var k = el('gate-input').value.trim();
   var errEl = el('gate-err');
   if (!k) { errEl.textContent = 'Please enter your API key.'; return; }
-  if (k.indexOf('sk-ant-') !== 0) { errEl.textContent = 'Keys start with sk-ant- — please check yours.'; return; }
+  if (k.indexOf('sk-') !== 0) { errEl.textContent = 'Keys start with sk- — please check yours.'; return; }
   errEl.textContent = '';
   storeKey(k);
   showGate(false);
@@ -373,29 +373,34 @@ function stopVoice() {
 }
 
 // ══════════════════════════════════
-// CLAUDE API
+// OPENAI API
 // ══════════════════════════════════
-var SYS_BRAINSTORM = 'You are IdeaForge AI, a creative product strategist. Respond ONLY with valid JSON. No markdown code fences, no text outside the JSON. Return exactly this structure: {"name":"App name 1-3 words","tagline":"Punchy sentence under 12 words","pitch":"2-3 sentences: what it does, who its for, why now","magicMoment":"One vivid paragraph of the exact moment someone needs this app","v1":"Core V1 features, each on its own line starting with a dash, 4-5 items","v2":"V2 additions, each line starting with a dash, 3-4 items","future":"Where this goes in 3-5 years, 2-3 sentences","complexity":"Low","complexityReason":"One sentence on why","costEstimate":"$X,000 to $Y,000","costBreakdown":"2 sentences on where money goes","buildTime":"X to Y months","techStack":"Plain English tech suggestion","landingPageConcept":"2 sentences on visual feel colors mood imagery for landing page and logo","claudeCodePrompt":"150-200 word prompt starting with Build me... to paste into Claude Code to start building this app. Specific about V1 features tech stack and key UX."} For complexity use only: Low, Medium, High, or Very High';
+var SYS_BRAINSTORM = 'You are IdeaForge AI, a creative product strategist. Respond ONLY with valid JSON. No markdown code fences, no text outside the JSON. Return exactly this structure: {"name":"App name 1-3 words","tagline":"Punchy sentence under 12 words","pitch":"2-3 sentences: what it does, who its for, why now","magicMoment":"One vivid paragraph of the exact moment someone needs this app","v1":"Core V1 features, each on its own line starting with a dash, 4-5 items","v2":"V2 additions, each line starting with a dash, 3-4 items","future":"Where this goes in 3-5 years, 2-3 sentences","complexity":"Low","complexityReason":"One sentence on why","costEstimate":"$X,000 to $Y,000","costBreakdown":"2 sentences on where money goes","buildTime":"X to Y months","techStack":"Plain English tech suggestion","landingPageConcept":"2 sentences on visual feel colors mood imagery for landing page and logo","claudeCodePrompt":"150-200 word prompt starting with Build me... to paste into Claude Code or ChatGPT to start building this app. Specific about V1 features tech stack and key UX."} For complexity use only: Low, Medium, High, or Very High';
 
 var SYS_AMEND = 'You are IdeaForge AI. You receive an existing app idea as JSON and an amendment instruction. Return ONLY the complete updated JSON with ALL fields preserved. Only change what was asked and anything logically connected. No markdown, no explanation, just the JSON object.';
 
 function callClaude(system, user, done) {
-  fetch('https://api.anthropic.com/v1/messages', {
+  fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': APP.apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
+      'Authorization': 'Bearer ' + APP.apiKey,
     },
-    body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 2500, system: system, messages: [{ role: 'user', content: user }] }),
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      max_tokens: 2500,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user }
+      ],
+    }),
   })
   .then(function(r) {
     if (!r.ok) return r.json().then(function(e) { throw new Error(e && e.error ? e.error.message : 'API error ' + r.status); });
     return r.json();
   })
   .then(function(d) {
-    var text = d.content[0].text;
+    var text = d.choices[0].message.content;
     var m = text.match(/\{[\s\S]*\}/);
     if (!m) throw new Error('Could not parse AI response. Please try again.');
     done(null, JSON.parse(m[0]));
