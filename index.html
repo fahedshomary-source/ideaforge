@@ -8,884 +8,784 @@
 <meta name="apple-mobile-web-app-title" content="IdeaForge"/>
 <meta name="theme-color" content="#0a0a0f"/>
 <title>IdeaForge</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#0a0a0f;--surface:#111118;--card:#16161f;--card2:#1c1c28;
   --border:#252535;--border2:#1e1e2d;
-  --accent:#f97316;--accent2:#fbbf24;
+  --accent:#f97316;--gold:#fbbf24;
   --text:#eeedf0;--muted:#7a7990;--faint:#4a4960;
-  --success:#10b981;--info:#60a5fa;--purple:#a78bfa;--danger:#ef4444;
-  --r-sm:8px;--r-md:12px;--r-lg:18px;--r-xl:24px;
+  --green:#10b981;--blue:#60a5fa;--purple:#a78bfa;--red:#ef4444;
 }
 html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
-h1,h2,h3,h4{font-family:'Syne',sans-serif;line-height:1.2}
-button{cursor:pointer;font-family:inherit;border:none;background:none}
-textarea,input{font-family:inherit}
-::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
-::selection{background:rgba(249,115,22,0.2)}
+h1,h2,h3{font-family:'Syne',sans-serif;line-height:1.2;font-weight:800}
+button{cursor:pointer;font-family:inherit;border:none;background:none;color:inherit}
+textarea,input{font-family:inherit;color:inherit}
+a{color:var(--accent)}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
-.fade-in{animation:fadeIn 0.35s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* NAV */
+#nav{
+  position:sticky;top:0;z-index:99;height:56px;
+  background:rgba(10,10,15,0.94);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:space-between;padding:0 16px;
+}
+#nav-logo{
+  font-family:'Syne',sans-serif;font-size:20px;font-weight:800;cursor:pointer;
+  background:linear-gradient(135deg,#f97316,#fbbf24);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.ntab{padding:6px 13px;border-radius:20px;font-size:13px;font-weight:500;cursor:pointer;color:var(--muted);transition:all 0.15s}
+.ntab.on{background:var(--accent);color:#fff}
+#settings-btn{font-size:18px;color:var(--faint);padding:4px 6px}
+
+/* GATE */
+#gate{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px}
+#gate.hidden{display:none}
+.gate-card{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:36px 28px;max-width:420px;width:100%}
+.gate-logo{font-family:'Syne',sans-serif;font-size:34px;font-weight:800;margin-bottom:10px;background:linear-gradient(135deg,#f97316,#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.gate-p{color:var(--muted);font-size:14px;line-height:1.7;margin-bottom:14px}
+.gate-label{display:block;font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+#gate-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;font-size:14px;font-family:monospace;outline:none;letter-spacing:.5px;margin-bottom:6px}
+#gate-input:focus{border-color:var(--accent)}
+#gate-err{color:var(--red);font-size:13px;min-height:20px;margin-bottom:10px}
+#gate-submit{width:100%;padding:15px;background:linear-gradient(135deg,#f97316,#fbbf24);border:none;border-radius:12px;color:#fff;font-family:'Syne',sans-serif;font-size:16px;font-weight:800;cursor:pointer}
+.gate-note{margin-top:16px;font-size:12px;color:var(--faint);text-align:center;line-height:1.6}
+
+/* SCREENS */
+#main{max-width:640px;margin:0 auto;width:100%}
+.screen{display:none;padding:20px 16px 60px}
+.screen.on{display:block;animation:fadeUp .3s ease}
+
+/* HERO */
+.hero{text-align:center;padding:20px 0 24px}
+.hero h1{font-size:26px;margin-bottom:8px}
+.grad{background:linear-gradient(135deg,#f97316,#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero p{color:var(--muted);font-size:14px}
+
+/* INPUT BOX */
+.ibox{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:12px 14px;transition:border-color .2s}
+.ibox.listening{border-color:var(--accent);box-shadow:0 0 0 3px rgba(249,115,22,.1)}
+.ibox textarea{width:100%;background:transparent;border:none;outline:none;font-size:15px;line-height:1.6;resize:none}
+.ibox-row{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--border2);gap:8px}
+.mic-btn{width:36px;height:36px;border-radius:50%;font-size:16px;display:flex;align-items:center;justify-content:center;background:var(--card2);border:1px solid var(--border);color:var(--muted);transition:all .2s;flex-shrink:0}
+.mic-btn.on{background:var(--accent);border-color:var(--accent);color:#fff;animation:pulse 1.2s ease-in-out infinite}
+.listen-hint{font-size:12px;color:var(--accent);font-weight:500}
+.go-btn{padding:8px 18px;border-radius:10px;font-family:'Syne',sans-serif;font-size:13px;font-weight:800;background:linear-gradient(135deg,#f97316,#fbbf24);color:#fff;border:none;cursor:pointer}
+.go-btn:disabled{background:#1c1c28;color:var(--faint);cursor:not-allowed}
+
+/* FORGE BTN */
+.forge-btn{width:100%;padding:15px;margin-top:12px;background:linear-gradient(135deg,#f97316,#fbbf24);border:none;border-radius:13px;color:#fff;font-family:'Syne',sans-serif;font-size:16px;font-weight:800;cursor:pointer}
+.forge-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* SPINNER */
+.spinner-wrap{display:none;text-align:center;padding:56px 24px}
+.spin-ring{width:48px;height:48px;border-radius:50%;margin:0 auto 20px;border:3px solid var(--border);border-top-color:var(--accent);animation:spin .75s linear infinite}
+
+/* ERROR */
+.err-box{margin-top:14px;padding:14px 16px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:12px;color:var(--red);font-size:14px;display:none}
+
+/* IDEA CARD */
+.idea-card{background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden}
+.ic-head{padding:22px 20px 18px;background:linear-gradient(135deg,rgba(249,115,22,.13),rgba(251,191,36,.05));border-bottom:1px solid var(--border2)}
+.ic-name{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;line-height:1.1;margin-bottom:8px;background:linear-gradient(135deg,#f97316,#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.ic-tagline{font-size:15px;font-style:italic;opacity:.88;line-height:1.5;margin-bottom:12px}
+.ic-meta{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.ic-body{padding:0 20px 20px}
+
+/* TAG */
+.tag{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.3px}
+
+/* SECTION */
+.sec{border-top:1px solid var(--border2);padding:16px 0}
+.sec-lbl{font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.sec-body{font-size:14px;color:#c8c7d4;line-height:1.75}
+
+/* AMEND */
+.amend-btn{font-size:11px;font-weight:600;padding:4px 10px;border-radius:8px;border:1px solid var(--border);color:var(--faint);cursor:pointer;margin-top:10px;background:transparent;letter-spacing:.3px}
+.amend-btn.open{border-color:var(--accent);color:var(--accent);background:rgba(249,115,22,.1)}
+.amend-wrap{display:none;margin-top:10px;animation:fadeUp .2s ease}
+.amend-wrap.on{display:block}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat-box{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:12px;text-align:center}
+.stat-lbl{font-size:11px;color:var(--muted);margin-bottom:4px}
+.stat-val{font-family:'Syne',sans-serif;font-weight:700;font-size:13px;line-height:1.4}
+
+/* BULLETS */
+.bullet{display:flex;gap:8px;margin-bottom:4px;font-size:13px;line-height:1.6}
+.bdot{color:var(--accent);flex-shrink:0;margin-top:3px}
+
+/* VERSION CARD */
+.vcard{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+
+/* PROMPT */
+.prompt-box{background:#0d0d14;border:1px solid var(--border2);border-radius:12px;padding:14px 16px;font-size:13px;color:#c8c7d4;line-height:1.75;font-family:monospace;white-space:pre-wrap;max-height:200px;overflow-y:auto;word-break:break-word}
+.copy-btn{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);color:var(--accent);cursor:pointer}
+.copy-btn.done{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.3);color:var(--green)}
+
+/* INFO BOX */
+.info-box{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;font-size:12px;color:var(--muted);line-height:1.6;margin-top:12px}
+
+/* SAVE BTN */
+.save-btn{padding:7px 14px;border-radius:10px;font-size:13px;font-weight:600;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);color:var(--accent);cursor:pointer}
+.save-btn.saved{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.3);color:var(--green);cursor:default}
+
+/* VAULT */
+.search-wrap{position:relative;margin-bottom:16px}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none}
+.search-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px 12px 38px;font-size:14px;outline:none}
+.search-input:focus{border-color:var(--accent)}
+.idea-row{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;cursor:pointer;transition:all .15s;margin-bottom:12px}
+.idea-row:hover{border-color:var(--accent);background:var(--card2)}
+.ir-name{font-family:'Syne',sans-serif;font-size:19px;font-weight:800;margin-bottom:4px;background:linear-gradient(135deg,#f97316,#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.ir-tagline{font-size:13px;color:var(--muted);font-style:italic;margin-bottom:10px;line-height:1.5}
+.del-btn{font-size:15px;color:var(--faint);padding:4px;flex-shrink:0}
+.confirm-row{margin-top:10px;padding:10px 14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.confirm-row span{font-size:13px;color:var(--red)}
+.empty-state{padding:64px 24px;text-align:center;color:var(--muted);font-size:14px;line-height:1.7}
+
+/* DETAIL */
+.back-btn{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:14px;cursor:pointer;padding:8px 0;margin-bottom:16px}
 </style>
 </head>
 <body>
-<div id="root"></div>
 
-<script type="text/babel">
-const { useState, useEffect, useRef, useCallback } = React;
+<!-- NAV -->
+<nav id="nav">
+  <div id="nav-logo">IdeaForge ⚡</div>
+  <div style="display:flex;gap:4px;align-items:center">
+    <button class="ntab on" data-tab="forge">⚡ Forge</button>
+    <button class="ntab" data-tab="vault">📦 Vault</button>
+    <button id="settings-btn" title="API Key">⚙</button>
+  </div>
+</nav>
 
-// ─── Storage ───────────────────────────────────────────────
-const STORAGE_KEYS = { ideas: 'ideaforge_ideas_v2', apiKey: 'ideaforge_key_v1' };
-const loadIdeas = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.ideas) || '[]'); } catch { return []; } };
-const saveIdeas = (ideas) => localStorage.setItem(STORAGE_KEYS.ideas, JSON.stringify(ideas));
-const loadKey = () => localStorage.getItem(STORAGE_KEYS.apiKey) || '';
-const saveKey = (k) => localStorage.setItem(STORAGE_KEYS.apiKey, k);
+<!-- GATE -->
+<div id="gate">
+  <div class="gate-card">
+    <div class="gate-logo">IdeaForge ⚡</div>
+    <p class="gate-p">Your personal AI-powered app idea studio. Speak or type a rough idea and get a full product concept instantly.</p>
+    <p class="gate-p">You need a free Anthropic API key. It is stored only on your device.</p>
+    <label class="gate-label">Anthropic API Key</label>
+    <input id="gate-input" type="password" placeholder="sk-ant-api03-..." autocomplete="off"/>
+    <div id="gate-err"></div>
+    <button id="gate-submit">Enter IdeaForge →</button>
+    <p class="gate-note">Get your free key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a><br/>Your key stays on your device only.</p>
+  </div>
+</div>
 
-// ─── Claude API ─────────────────────────────────────────────
-async function callClaude(apiKey, system, userMsg) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+<!-- MAIN -->
+<div id="main">
+
+  <!-- FORGE -->
+  <div id="forge-screen" class="screen on">
+    <div class="hero">
+      <h1>What's your <span class="grad">next big idea?</span></h1>
+      <p>Speak or type it rough — IdeaForge shapes it into a full product concept.</p>
+    </div>
+    <div class="ibox" id="forge-ibox">
+      <textarea id="forge-ta" rows="3" placeholder="e.g. An app that helps parents track their kids reading habits and gives them rewards..."></textarea>
+      <div class="ibox-row">
+        <div style="display:flex;align-items:center;gap:8px;flex:1">
+          <button class="mic-btn" id="forge-mic">🎙</button>
+          <span class="listen-hint" id="forge-hint" style="display:none">Listening...</span>
+        </div>
+        <button class="go-btn" id="forge-go" disabled>⚡ Forge It</button>
+      </div>
+    </div>
+    <button class="forge-btn" id="forge-btn" disabled>⚡ Forge My Idea</button>
+
+    <div class="spinner-wrap" id="spinner">
+      <div class="spin-ring"></div>
+      <p id="spin-msg" style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px">Shaping your idea...</p>
+      <p style="font-size:13px;color:var(--faint)">The AI is thinking deeply...</p>
+    </div>
+
+    <div class="err-box" id="forge-err"></div>
+
+    <div id="result-area" style="display:none;margin-top:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <h2 style="font-size:18px">Your Concept ✨</h2>
+        <button class="save-btn" id="save-btn">💾 Save to Vault</button>
+      </div>
+      <div id="result-card"></div>
+      <div style="text-align:center;margin-top:20px">
+        <button id="forge-again" style="padding:10px 20px;border-radius:10px;border:1px solid var(--border);color:var(--muted);font-size:14px;background:transparent;cursor:pointer">⚡ Forge another idea</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VAULT -->
+  <div id="vault-screen" class="screen">
+    <h2 style="font-size:22px;margin-bottom:3px">Your Ideas</h2>
+    <p id="vault-count" style="color:var(--muted);font-size:13px;margin-bottom:16px">0 ideas saved</p>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" id="vault-search" type="text" placeholder="Search your ideas..."/>
+    </div>
+    <div id="vault-list"></div>
+  </div>
+
+  <!-- DETAIL -->
+  <div id="detail-screen" class="screen">
+    <button class="back-btn" id="back-btn">← Back to Vault</button>
+    <div id="detail-card"></div>
+    <div style="text-align:center;margin-top:24px">
+      <button id="detail-del" style="padding:10px 20px;border-radius:10px;border:1px solid rgba(239,68,68,.3);color:rgba(239,68,68,.7);font-size:13px;background:transparent;cursor:pointer">🗑 Delete this idea</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════
+// STATE
+// ══════════════════════════════════
+var APP = {
+  apiKey: '',
+  ideas: [],
+  screen: 'forge',
+  selectedId: null,
+  forgeResult: null,
+  forgeSaved: false,
+  confirmDel: null,
+  voiceRec: null,
+  voiceCfg: null,
+};
+
+// ══════════════════════════════════
+// STORAGE
+// ══════════════════════════════════
+function loadStorage() {
+  APP.apiKey = localStorage.getItem('ig_key') || '';
+  try { APP.ideas = JSON.parse(localStorage.getItem('ig_ideas') || '[]'); } catch(e) { APP.ideas = []; }
+}
+function persistIdeas() { localStorage.setItem('ig_ideas', JSON.stringify(APP.ideas)); }
+function storeKey(k) { localStorage.setItem('ig_key', k); APP.apiKey = k; }
+
+// ══════════════════════════════════
+// UTILS
+// ══════════════════════════════════
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function el(id) { return document.getElementById(id); }
+
+function show(id) { var e = el(id); if (e) e.style.display = 'block'; }
+function hide(id) { var e = el(id); if (e) e.style.display = 'none'; }
+
+// ══════════════════════════════════
+// GATE
+// ══════════════════════════════════
+function showGate(on) {
+  el('gate').classList.toggle('hidden', !on);
+  el('nav').style.display = on ? 'none' : '';
+  el('main').style.display = on ? 'none' : '';
+}
+
+el('gate-submit').addEventListener('click', function() {
+  var k = el('gate-input').value.trim();
+  var errEl = el('gate-err');
+  if (!k) { errEl.textContent = 'Please enter your API key.'; return; }
+  if (k.indexOf('sk-ant-') !== 0) { errEl.textContent = 'Keys start with sk-ant- — please check yours.'; return; }
+  errEl.textContent = '';
+  storeKey(k);
+  showGate(false);
+});
+
+el('gate-input').addEventListener('keydown', function(e) { if (e.key === 'Enter') el('gate-submit').click(); });
+
+el('settings-btn').addEventListener('click', function() {
+  el('gate-input').value = APP.apiKey;
+  el('gate-err').textContent = '';
+  showGate(true);
+});
+
+// ══════════════════════════════════
+// NAV
+// ══════════════════════════════════
+function goScreen(name) {
+  APP.screen = name;
+  document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('on'); });
+  el(name + '-screen').classList.add('on');
+  document.querySelectorAll('.ntab').forEach(function(t) {
+    t.classList.toggle('on', t.dataset.tab === name || (name === 'detail' && t.dataset.tab === 'vault'));
+  });
+  if (name === 'vault') renderVault();
+  if (name === 'detail') renderDetail();
+}
+
+document.querySelectorAll('.ntab').forEach(function(t) { t.addEventListener('click', function() { goScreen(t.dataset.tab); }); });
+el('nav-logo').addEventListener('click', function() { goScreen('forge'); });
+
+// ══════════════════════════════════
+// VOICE
+// ══════════════════════════════════
+function startVoice(cfg) {
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { alert('Voice input is not supported here. Please type your idea.'); return; }
+  if (APP.voiceRec) { APP.voiceRec.stop(); return; }
+
+  APP.voiceCfg = cfg;
+  var r = new SR();
+  APP.voiceRec = r;
+  r.continuous = false;
+  r.interimResults = true;
+  r.lang = 'en-US';
+
+  cfg.mic.classList.add('on');
+  if (cfg.hint) cfg.hint.style.display = 'inline';
+  if (cfg.ibox) cfg.ibox.classList.add('listening');
+
+  r.onresult = function(e) {
+    var t = '';
+    for (var i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
+    var combined = ((cfg.base || '') + ' ' + t).trim();
+    cfg.ta.value = combined;
+    cfg.ta.dispatchEvent(new Event('input'));
+    if (e.results[e.results.length - 1].isFinal) cfg.base = combined;
+  };
+  r.onerror = stopVoice;
+  r.onend = stopVoice;
+  r.start();
+}
+
+function stopVoice() {
+  if (!APP.voiceRec) return;
+  try { APP.voiceRec.stop(); } catch(e) {}
+  APP.voiceRec = null;
+  if (APP.voiceCfg) {
+    APP.voiceCfg.mic.classList.remove('on');
+    if (APP.voiceCfg.hint) APP.voiceCfg.hint.style.display = 'none';
+    if (APP.voiceCfg.ibox) APP.voiceCfg.ibox.classList.remove('listening');
+    APP.voiceCfg = null;
+  }
+}
+
+// ══════════════════════════════════
+// CLAUDE API
+// ══════════════════════════════════
+var SYS_BRAINSTORM = 'You are IdeaForge AI, a creative product strategist. Respond ONLY with valid JSON. No markdown code fences, no text outside the JSON. Return exactly this structure: {"name":"App name 1-3 words","tagline":"Punchy sentence under 12 words","pitch":"2-3 sentences: what it does, who its for, why now","magicMoment":"One vivid paragraph of the exact moment someone needs this app","v1":"Core V1 features, each on its own line starting with a dash, 4-5 items","v2":"V2 additions, each line starting with a dash, 3-4 items","future":"Where this goes in 3-5 years, 2-3 sentences","complexity":"Low","complexityReason":"One sentence on why","costEstimate":"$X,000 to $Y,000","costBreakdown":"2 sentences on where money goes","buildTime":"X to Y months","techStack":"Plain English tech suggestion","landingPageConcept":"2 sentences on visual feel colors mood imagery for landing page and logo","claudeCodePrompt":"150-200 word prompt starting with Build me... to paste into Claude Code to start building this app. Specific about V1 features tech stack and key UX."} For complexity use only: Low, Medium, High, or Very High';
+
+var SYS_AMEND = 'You are IdeaForge AI. You receive an existing app idea as JSON and an amendment instruction. Return ONLY the complete updated JSON with ALL fields preserved. Only change what was asked and anything logically connected. No markdown, no explanation, just the JSON object.';
+
+function callClaude(system, user, done) {
+  fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': apiKey,
+      'x-api-key': APP.apiKey,
       'anthropic-version': '2023-06-01',
       'anthropic-dangerous-direct-browser-access': 'true',
     },
-    body: JSON.stringify({
-      model: 'claude-opus-4-5',
-      max_tokens: 2500,
-      system,
-      messages: [{ role: 'user', content: userMsg }],
-    }),
-  });
-  if (!res.ok) {
-    const e = await res.json().catch(() => ({}));
-    throw new Error(e?.error?.message || `API error ${res.status}`);
+    body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 2500, system: system, messages: [{ role: 'user', content: user }] }),
+  })
+  .then(function(r) {
+    if (!r.ok) return r.json().then(function(e) { throw new Error(e && e.error ? e.error.message : 'API error ' + r.status); });
+    return r.json();
+  })
+  .then(function(d) {
+    var text = d.content[0].text;
+    var m = text.match(/\{[\s\S]*\}/);
+    if (!m) throw new Error('Could not parse AI response. Please try again.');
+    done(null, JSON.parse(m[0]));
+  })
+  .catch(function(e) { done(e, null); });
+}
+
+// ══════════════════════════════════
+// FORGE
+// ══════════════════════════════════
+var SPIN_MSGS = ['Shaping your idea...','Finding the perfect name...','Mapping the roadmap...','Crunching the costs...','Writing your build prompt...','Almost there...'];
+var spinTimer = null;
+
+function setLoading(on) {
+  var spinner = el('spinner');
+  spinner.style.display = on ? 'block' : 'none';
+  if (on) {
+    var i = 0; el('spin-msg').textContent = SPIN_MSGS[0];
+    spinTimer = setInterval(function() { i=(i+1)%SPIN_MSGS.length; el('spin-msg').textContent = SPIN_MSGS[i]; }, 2200);
+  } else {
+    clearInterval(spinTimer);
   }
-  const data = await res.json();
-  return data.content[0].text;
+  el('result-area').style.display = 'none';
+  el('forge-err').style.display = 'none';
+  el('forge-btn').disabled = on;
+  el('forge-go').disabled = on || !el('forge-ta').value.trim();
 }
 
-const BRAINSTORM_SYSTEM = `You are IdeaForge AI — a sharp, creative product strategist and startup advisor.
-When given a rough app idea, respond ONLY with valid JSON, no markdown, no explanation outside the JSON object.
+var forgeTa = el('forge-ta');
+var forgeMic = el('forge-mic');
+var forgeHint = el('forge-hint');
+var forgeIbox = el('forge-ibox');
 
-Return exactly this structure:
-{
-  "name": "Catchy app name (1-3 words)",
-  "tagline": "One punchy sentence that sells the app (under 12 words)",
-  "pitch": "2-3 sentences. What it does, who it's for, why it matters now.",
-  "magicMoment": "A vivid, specific scenario — one paragraph describing the exact moment a real person would pull out this app and feel relieved or delighted. Make it emotional and relatable.",
-  "v1": "V1 core features as bullet points separated by newline character. Start each with a dash. 4-5 bullets max.",
-  "v2": "V2 additions as bullet points separated by newline character. Start each with a dash. 3-4 bullets.",
-  "future": "The bigger vision — where this could go in 3-5 years. 2-3 sentences about scale and potential.",
-  "complexity": "Low",
-  "complexityReason": "One sentence explaining why.",
-  "costEstimate": "$5,000–$15,000",
-  "costBreakdown": "2 sentences on where the money goes.",
-  "buildTime": "2–4 months",
-  "techStack": "Plain English tech stack suggestion. No jargon. e.g. A mobile app built with React Native, a simple Node.js server, and a Firebase database.",
-  "landingPageConcept": "2 sentences describing the visual feel — colors, mood, imagery, font style — for the landing page and logo.",
-  "claudeCodePrompt": "A detailed 150-200 word prompt someone could paste into Claude Code or claude.ai to start building this app. Be practical and specific: mention the V1 features, tech stack, key UX decisions, and any important details. Write it as a direct instruction starting with Build me..."
+forgeTa.addEventListener('input', function() {
+  var empty = !this.value.trim();
+  el('forge-go').disabled = empty;
+  el('forge-btn').disabled = empty;
+});
+
+forgeMic.addEventListener('click', function() {
+  if (APP.voiceRec && APP.voiceCfg && APP.voiceCfg.ta === forgeTa) { stopVoice(); return; }
+  startVoice({ ta: forgeTa, mic: forgeMic, hint: forgeHint, ibox: forgeIbox, base: forgeTa.value });
+});
+
+function doForge() {
+  var raw = forgeTa.value.trim();
+  if (!raw) return;
+  stopVoice();
+  setLoading(true);
+  callClaude(SYS_BRAINSTORM, 'App idea: "' + raw + '"\n\nReturn only the JSON object.', function(err, idea) {
+    setLoading(false);
+    if (err) {
+      var errEl = el('forge-err');
+      errEl.textContent = '⚠ ' + (err.message || 'Something went wrong. Check your API key.');
+      errEl.style.display = 'block';
+      return;
+    }
+    idea.id = Date.now().toString();
+    idea.rawIdea = raw;
+    idea.createdAt = new Date().toISOString();
+    APP.forgeResult = idea;
+    APP.forgeSaved = false;
+    var sb = el('save-btn');
+    sb.className = 'save-btn';
+    sb.textContent = '💾 Save to Vault';
+    el('result-card').innerHTML = buildCard(idea, 'forge');
+    el('result-area').style.display = 'block';
+    bindCard('forge', idea);
+  });
 }
 
-For complexity use only one of: Low, Medium, High, Very High`;
+el('forge-go').addEventListener('click', doForge);
+el('forge-btn').addEventListener('click', doForge);
 
-async function brainstormIdea(apiKey, rawIdea) {
-  const text = await callClaude(apiKey, BRAINSTORM_SYSTEM,
-    `Here is my app idea: "${rawIdea}"\n\nBrainstorm this into a full product concept. Return only the JSON object, nothing else.`
-  );
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error('Could not parse AI response. Please try again.');
-  return JSON.parse(match[0]);
+el('save-btn').addEventListener('click', function() {
+  if (!APP.forgeResult || APP.forgeSaved) return;
+  upsertIdea(APP.forgeResult);
+  APP.forgeSaved = true;
+  this.className = 'save-btn saved';
+  this.textContent = '✓ Saved to Vault';
+});
+
+el('forge-again').addEventListener('click', function() {
+  forgeTa.value = '';
+  el('forge-go').disabled = true;
+  el('forge-btn').disabled = true;
+  el('result-area').style.display = 'none';
+  el('forge-err').style.display = 'none';
+  APP.forgeResult = null;
+  forgeTa.focus();
+});
+
+// ══════════════════════════════════
+// BUILD CARD HTML
+// ══════════════════════════════════
+var CPLX_COLORS = { 'Low':'#10b981','Medium':'#fbbf24','High':'#f97316','Very High':'#ef4444' };
+
+function tag(text, color) {
+  return '<span class="tag" style="background:' + color + '22;color:' + color + ';border:1px solid ' + color + '44">' + esc(text) + '</span>';
 }
 
-async function amendSection(apiKey, idea, sectionKey, instruction) {
-  const system = `You are IdeaForge AI. You receive an existing app idea as JSON and an amendment instruction for a specific section.
-Return ONLY the complete updated JSON object with ALL fields preserved. Only change what the user asked for (and any fields that logically need to change as a result).
-No markdown, no explanation — just the JSON object.`;
-  const text = await callClaude(apiKey, system,
-    `Current idea:\n${JSON.stringify(idea, null, 2)}\n\nThe user wants to change the "${sectionKey}" section:\n"${instruction}"\n\nReturn the complete updated JSON.`
-  );
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error('Could not parse response.');
-  return { ...idea, ...JSON.parse(match[0]) };
+function bullets(text) {
+  if (!text) return '';
+  return text.split('\n').filter(function(l){ return l.trim(); }).map(function(l) {
+    return '<div class="bullet"><span class="bdot">▸</span><span>' + esc(l.replace(/^[-•▸]\s*/,'')) + '</span></div>';
+  }).join('');
 }
 
-// ─── Voice Hook ─────────────────────────────────────────────
-function useVoice(onResult) {
-  const [listening, setListening] = useState(false);
-  const supported = ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
-  const ref = useRef(null);
-  const toggle = useCallback((baseText = '') => {
-    if (listening) { ref.current?.stop(); return; }
-    if (!supported) { alert('Voice not supported in this browser. Please use Chrome on Android or Safari on iPhone.'); return; }
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const r = new SR();
-    ref.current = r;
-    r.continuous = false;
-    r.interimResults = true;
-    r.lang = 'en-US';
-    r.onstart = () => setListening(true);
-    r.onresult = (e) => {
-      let t = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
-      onResult((baseText + ' ' + t).trim(), e.results[e.results.length - 1].isFinal);
-    };
-    r.onerror = () => setListening(false);
-    r.onend = () => setListening(false);
-    r.start();
-  }, [listening, supported, onResult]);
-  return { listening, supported, toggle };
+function amendBlock(skey, ctx) {
+  var uid = ctx + '-' + skey;
+  return '<button class="amend-btn" id="ab-' + uid + '" data-s="' + skey + '" data-c="' + ctx + '">✏ Amend</button>' +
+    '<div class="amend-wrap" id="aw-' + uid + '">' +
+      '<div class="ibox" id="aibox-' + uid + '">' +
+        '<textarea rows="2" id="ata-' + uid + '" placeholder="How should this change? Speak or type..."></textarea>' +
+        '<div class="ibox-row">' +
+          '<div style="display:flex;align-items:center;gap:8px;flex:1">' +
+            '<button class="mic-btn" id="amic-' + uid + '">🎙</button>' +
+            '<span class="listen-hint" id="ahint-' + uid + '" style="display:none">Listening...</span>' +
+          '</div>' +
+          '<button class="go-btn" id="ago-' + uid + '" disabled>Apply Change</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
 }
 
-// ─── Shared Components ──────────────────────────────────────
-function GradientText({ children, style = {} }) {
-  return (
-    <span style={{
-      background: 'linear-gradient(135deg, #f97316, #fbbf24)',
-      WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-      backgroundClip: 'text', ...style
-    }}>{children}</span>
-  );
+function section(icon, label, skey, ctx, body) {
+  return '<div class="sec"><div class="sec-lbl"><span>' + icon + '</span>' + label + '</div>' +
+    '<div class="sec-body">' + body + '</div>' + amendBlock(skey, ctx) + '</div>';
 }
 
-function Btn({ children, onClick, disabled, variant = 'primary', style = {}, small = false }) {
-  const base = {
-    padding: small ? '6px 14px' : '12px 20px',
-    borderRadius: var => small ? 8 : 12,
-    fontSize: small ? 12 : 14,
-    fontWeight: 600,
-    fontFamily: "'DM Sans', sans-serif",
-    transition: 'all 0.15s',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    opacity: disabled ? 0.5 : 1,
-  };
-  const variants = {
-    primary: { background: 'linear-gradient(135deg, #f97316, #fbbf24)', color: '#fff', border: 'none' },
-    ghost: { background: 'transparent', color: '#7a7990', border: '1px solid #252535' },
-    danger: { background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' },
-    success: { background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' },
-    orange: { background: 'rgba(249,115,22,0.12)', color: '#f97316', border: '1px solid rgba(249,115,22,0.3)' },
-  };
-  return (
-    <button onClick={disabled ? undefined : onClick}
-      style={{ ...base, ...variants[variant], borderRadius: small ? 8 : 12, ...style }}>
-      {children}
-    </button>
-  );
+function buildCard(idea, ctx) {
+  var cc = CPLX_COLORS[idea.complexity] || '#f97316';
+  var date = idea.createdAt ? new Date(idea.createdAt).toLocaleDateString() : '';
+  var h = '<div class="idea-card">';
+
+  // Header
+  h += '<div class="ic-head">';
+  h += '<div class="ic-name">' + esc(idea.name) + '</div>';
+  h += '<div class="ic-tagline">"' + esc(idea.tagline) + '"</div>';
+  h += '<div class="ic-meta"><div style="display:flex;gap:6px;flex-wrap:wrap">';
+  if (idea.complexity) h += tag(idea.complexity + ' complexity', cc);
+  if (idea.buildTime) h += tag(idea.buildTime, '#60a5fa');
+  h += '</div>';
+  if (date) h += '<span style="font-size:11px;color:var(--faint)">' + date + '</span>';
+  h += '</div>';
+  h += amendBlock('name', ctx);
+  h += '</div>';
+
+  h += '<div class="ic-body">';
+
+  // Pitch
+  h += section('🎯','The Pitch','pitch',ctx,'<p>' + esc(idea.pitch) + '</p>');
+
+  // Magic Moment
+  h += section('✨','Magic Moment','magicMoment',ctx,'<p>' + esc(idea.magicMoment) + '</p>');
+
+  // Roadmap
+  var rm = '<div class="vcard">' + tag('V1 — Launch','#10b981') + '<div style="margin-top:8px">' + bullets(idea.v1) + '</div></div>';
+  rm += '<div class="vcard">' + tag('V2 — Growth','#60a5fa') + '<div style="margin-top:8px">' + bullets(idea.v2) + '</div></div>';
+  rm += '<div class="vcard">' + tag('Future Vision','#a78bfa') + '<div style="font-size:13px;color:#c8c7d4;line-height:1.7;margin-top:8px">' + esc(idea.future) + '</div></div>';
+  h += section('🗺','Roadmap','v1',ctx, rm);
+
+  // Cost
+  var cost = '<div class="stats-grid">';
+  cost += '<div class="stat-box"><div class="stat-lbl">Complexity</div><div class="stat-val" style="color:' + cc + '">' + esc(idea.complexity||'') + '</div></div>';
+  cost += '<div class="stat-box"><div class="stat-lbl">Est. Cost</div><div class="stat-val" style="color:#fbbf24">' + esc(idea.costEstimate||'') + '</div></div>';
+  cost += '<div class="stat-box"><div class="stat-lbl">Build Time</div><div class="stat-val" style="color:#60a5fa">' + esc(idea.buildTime||'') + '</div></div>';
+  cost += '<div class="stat-box"><div class="stat-lbl">Tech Stack</div><div class="stat-val" style="color:#a78bfa;font-family:inherit;font-size:11px">' + esc(idea.techStack||'') + '</div></div>';
+  cost += '</div><p style="font-size:13px;color:var(--muted);line-height:1.6">' + esc((idea.complexityReason||'') + ' ' + (idea.costBreakdown||'')) + '</p>';
+  h += section('💰','Cost & Complexity','costEstimate',ctx, cost);
+
+  // Landing page
+  var lp = '<p style="margin-bottom:12px">' + esc(idea.landingPageConcept||'') + '</p>';
+  lp += '<div class="info-box">💡 <strong style="color:var(--text)">Generate your image:</strong> Paste into <a href="https://www.midjourney.com" target="_blank">Midjourney</a> or <a href="https://chat.openai.com" target="_blank">ChatGPT</a> — prompt: "App landing page for ' + esc(idea.name) + ': ' + esc(idea.landingPageConcept||'') + '"</div>';
+  h += section('🎨','Landing Page & Logo','landingPageConcept',ctx, lp);
+
+  // Build prompt
+  h += '<div class="sec">';
+  h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:6px">';
+  h += '<div class="sec-lbl" style="margin-bottom:0"><span>🤖</span>Build Prompt for Claude</div>';
+  h += '<button class="copy-btn" id="copybtn-' + ctx + '">📋 Copy</button></div>';
+  h += '<div class="prompt-box">' + esc(idea.claudeCodePrompt||'') + '</div>';
+  h += '<p style="font-size:12px;color:var(--faint);margin-top:8px;line-height:1.5">Copy and paste into claude.ai or Claude Code to start building.</p>';
+  h += amendBlock('claudeCodePrompt', ctx);
+  h += '</div>';
+
+  h += '</div></div>';
+  return h;
 }
 
-function Tag({ children, color = '#f97316', bg }) {
-  return (
-    <span style={{
-      display: 'inline-block', padding: '3px 10px', borderRadius: 20,
-      fontSize: 11, fontWeight: 700, letterSpacing: '0.3px',
-      background: bg || `${color}22`, color,
-      border: `1px solid ${color}44`,
-    }}>{children}</span>
-  );
-}
-
-function SectionLabel({ icon, children }) {
-  return (
-    <div style={{
-      fontSize: 11, fontWeight: 700, letterSpacing: '1.2px',
-      textTransform: 'uppercase', color: '#f97316',
-      display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10,
-    }}>
-      <span>{icon}</span>{children}
-    </div>
-  );
-}
-
-function Card({ children, style = {} }) {
-  return (
-    <div style={{
-      background: '#16161f', border: '1px solid #252535',
-      borderRadius: 18, overflow: 'hidden', ...style
-    }}>{children}</div>
-  );
-}
-
-// ─── Voice+Text Input ────────────────────────────────────────
-function VoiceInput({ value, onChange, placeholder, onSubmit, submitLabel = 'Go', rows = 3, disabled = false }) {
-  const [interim, setInterim] = useState('');
-  const baseRef = useRef('');
-
-  const { listening, supported, toggle } = useVoice((transcript, isFinal) => {
-    if (isFinal) {
-      const v = (baseRef.current + ' ' + transcript).trim();
-      onChange(v); baseRef.current = v; setInterim('');
-    } else { setInterim(transcript); }
+// ══════════════════════════════════
+// BIND CARD EVENTS
+// ══════════════════════════════════
+function bindCard(ctx, idea) {
+  // Copy
+  var cb = el('copybtn-' + ctx);
+  if (cb) cb.addEventListener('click', function() {
+    var btn = this;
+    navigator.clipboard.writeText(idea.claudeCodePrompt || '').then(function() {
+      btn.textContent = '✓ Copied!'; btn.classList.add('done');
+      setTimeout(function() { btn.textContent = '📋 Copy'; btn.classList.remove('done'); }, 2500);
+    }).catch(function() {
+      // fallback for older browsers
+      var ta = document.createElement('textarea');
+      ta.value = idea.claudeCodePrompt || '';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+      btn.textContent = '✓ Copied!'; btn.classList.add('done');
+      setTimeout(function() { btn.textContent = '📋 Copy'; btn.classList.remove('done'); }, 2500);
+    });
   });
 
-  const display = listening && interim ? (value + ' ' + interim).trim() : value;
+  // Amend buttons
+  document.querySelectorAll('.amend-btn[data-c="' + ctx + '"]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var skey = this.dataset.s;
+      var awId = 'aw-' + ctx + '-' + skey;
+      var isOpen = el(awId).classList.contains('on');
+      // close all in this ctx
+      document.querySelectorAll('[id^="aw-' + ctx + '-"]').forEach(function(w) { w.classList.remove('on'); });
+      document.querySelectorAll('.amend-btn[data-c="' + ctx + '"]').forEach(function(b) { b.classList.remove('open'); b.textContent = '✏ Amend'; });
+      if (!isOpen) {
+        el(awId).classList.add('on');
+        this.classList.add('open');
+        this.textContent = '✕ Cancel';
+        var ta = el('ata-' + ctx + '-' + skey);
+        if (ta) { ta.value = ''; ta.focus(); }
+      }
+    });
+  });
 
-  return (
-    <div style={{
-      background: '#111118', border: `1.5px solid ${listening ? '#f97316' : '#252535'}`,
-      borderRadius: 14, padding: '12px 14px', transition: 'border-color 0.2s',
-      boxShadow: listening ? '0 0 0 3px rgba(249,115,22,0.1)' : 'none',
-    }}>
-      <textarea
-        rows={rows} disabled={disabled}
-        placeholder={listening ? '🎙 Listening...' : placeholder}
-        value={display}
-        onChange={e => { onChange(e.target.value); baseRef.current = e.target.value; }}
-        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && onSubmit) { e.preventDefault(); onSubmit(); } }}
-        style={{
-          width: '100%', background: 'transparent', border: 'none', outline: 'none',
-          color: listening && interim ? '#f97316' : '#eeedf0',
-          fontSize: 15, lineHeight: 1.6, resize: 'none',
-          fontFamily: "'DM Sans', sans-serif",
-        }}
-      />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTop: '1px solid #1e1e2d' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {supported && (
-            <button
-              onClick={() => { baseRef.current = value; toggle(value); }}
-              disabled={disabled}
-              style={{
-                width: 36, height: 36, borderRadius: '50%', fontSize: 16,
-                background: listening ? '#f97316' : '#1c1c28',
-                border: listening ? '2px solid #f97316' : '1px solid #252535',
-                color: listening ? '#fff' : '#7a7990',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                animation: listening ? 'pulse 1.2s ease-in-out infinite' : 'none',
-                cursor: disabled ? 'not-allowed' : 'pointer',
-              }}
-            >🎙</button>
-          )}
-          {listening && <span style={{ fontSize: 12, color: '#f97316', fontWeight: 600 }}>Listening...</span>}
-        </div>
-        {onSubmit && (
-          <button
-            onClick={onSubmit}
-            disabled={disabled || !value.trim()}
-            style={{
-              padding: '8px 18px', borderRadius: 10, border: 'none',
-              background: value.trim() && !disabled ? 'linear-gradient(135deg,#f97316,#fbbf24)' : '#1c1c28',
-              color: value.trim() && !disabled ? '#fff' : '#4a4960',
-              fontFamily: "'Syne', sans-serif", fontSize: 13, fontWeight: 700,
-              cursor: value.trim() && !disabled ? 'pointer' : 'not-allowed',
-              letterSpacing: 0.3,
-            }}
-          >{submitLabel}</button>
-        )}
-      </div>
-    </div>
-  );
+  // Each amend section: textarea, mic, go
+  var sections = ['name','pitch','magicMoment','v1','costEstimate','landingPageConcept','claudeCodePrompt'];
+  sections.forEach(function(skey) {
+    var uid = ctx + '-' + skey;
+    var ta = el('ata-' + uid);
+    var mic = el('amic-' + uid);
+    var hint = el('ahint-' + uid);
+    var ibox = el('aibox-' + uid);
+    var goBtn = el('ago-' + uid);
+    if (!ta) return;
+
+    ta.addEventListener('input', function() { if (goBtn) goBtn.disabled = !this.value.trim(); });
+
+    if (mic) mic.addEventListener('click', function() {
+      if (APP.voiceRec && APP.voiceCfg && APP.voiceCfg.ta === ta) { stopVoice(); return; }
+      startVoice({ ta: ta, mic: mic, hint: hint, ibox: ibox, base: ta.value });
+    });
+
+    if (goBtn) goBtn.addEventListener('click', function() {
+      var instruction = ta.value.trim();
+      if (!instruction) return;
+      goBtn.disabled = true;
+      goBtn.textContent = 'Applying...';
+      stopVoice();
+      var msg = 'Current idea:\n' + JSON.stringify(idea) + '\n\nAmend "' + skey + '" with this instruction: "' + instruction + '"\n\nReturn the complete updated JSON.';
+      callClaude(SYS_AMEND, msg, function(err, updated) {
+        goBtn.textContent = 'Apply Change';
+        if (err) { alert('Amendment failed: ' + (err.message || 'Unknown error')); goBtn.disabled = false; return; }
+        var merged = Object.assign({}, idea, updated, { id: idea.id, createdAt: idea.createdAt, rawIdea: idea.rawIdea });
+        if (ctx === 'forge') {
+          APP.forgeResult = merged;
+          if (APP.forgeSaved) upsertIdea(merged);
+          el('result-card').innerHTML = buildCard(merged, 'forge');
+          bindCard('forge', merged);
+        } else {
+          upsertIdea(merged);
+          APP.selectedId = merged.id;
+          el('detail-card').innerHTML = buildCard(merged, 'detail');
+          bindCard('detail', merged);
+        }
+      });
+    });
+  });
 }
 
-// ─── Amend Box ───────────────────────────────────────────────
-function AmendBox({ sectionKey, sectionLabel, idea, apiKey, onAmended }) {
-  const [open, setOpen] = useState(false);
-  const [text, setText] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const apply = async () => {
-    if (!text.trim() || loading) return;
-    setLoading(true);
-    try {
-      const updated = await amendSection(apiKey, idea, sectionKey, text);
-      onAmended(updated);
-      setOpen(false); setText('');
-    } catch (e) { alert('Amendment failed: ' + e.message); }
-    finally { setLoading(false); }
-  };
-
-  return (
-    <div style={{ marginTop: 10 }}>
-      <button
-        onClick={() => { setOpen(!open); setText(''); }}
-        style={{
-          fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 8,
-          background: open ? 'rgba(249,115,22,0.15)' : 'transparent',
-          border: `1px solid ${open ? '#f97316' : '#252535'}`,
-          color: open ? '#f97316' : '#4a4960', cursor: 'pointer',
-          letterSpacing: '0.3px',
-        }}
-      >{open ? '✕ Cancel' : '✏ Amend'}</button>
-
-      {open && (
-        <div style={{ marginTop: 10, animation: 'fadeIn 0.2s ease' }}>
-          <VoiceInput
-            value={text} onChange={setText}
-            placeholder={`How should the ${sectionLabel} change? Speak or type...`}
-            onSubmit={apply}
-            submitLabel={loading ? 'Applying...' : 'Apply Change'}
-            rows={2} disabled={loading}
-          />
-        </div>
-      )}
-    </div>
-  );
+// ══════════════════════════════════
+// VAULT
+// ══════════════════════════════════
+function upsertIdea(idea) {
+  APP.ideas = [idea].concat(APP.ideas.filter(function(i){ return i.id !== idea.id; }));
+  persistIdeas();
 }
 
-// ─── Section Block ───────────────────────────────────────────
-function SectionBlock({ icon, label, sectionKey, idea, apiKey, onAmended, children }) {
-  return (
-    <div style={{ borderTop: '1px solid #1e1e2d', padding: '16px 0' }}>
-      <SectionLabel icon={icon}>{label}</SectionLabel>
-      <div style={{ fontSize: 14, color: '#c8c7d4', lineHeight: 1.75 }}>{children}</div>
-      <AmendBox sectionKey={sectionKey} sectionLabel={label} idea={idea} apiKey={apiKey} onAmended={onAmended} />
-    </div>
-  );
+function removeIdea(id) {
+  APP.ideas = APP.ideas.filter(function(i){ return i.id !== id; });
+  persistIdeas();
 }
 
-function Bullets({ text }) {
-  if (!text) return null;
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      {text.split('\n').filter(Boolean).map((line, i) => (
-        <div key={i} style={{ display: 'flex', gap: 8 }}>
-          <span style={{ color: '#f97316', flexShrink: 0, marginTop: 3 }}>▸</span>
-          <span>{line.replace(/^[-•▸]\s*/, '')}</span>
-        </div>
-      ))}
-    </div>
-  );
+function renderVault() {
+  var search = (el('vault-search').value || '').toLowerCase();
+  var filtered = APP.ideas.filter(function(i) {
+    if (!search) return true;
+    return [i.name, i.tagline, i.rawIdea, i.pitch].some(function(f) { return f && f.toLowerCase().indexOf(search) !== -1; });
+  });
+
+  el('vault-count').textContent = APP.ideas.length + ' idea' + (APP.ideas.length !== 1 ? 's' : '') + ' saved';
+  var list = el('vault-list');
+
+  if (!APP.ideas.length) {
+    list.innerHTML = '<div class="empty-state"><div style="font-size:52px">📦</div><h2 style="font-size:22px;margin:12px 0 8px">Your vault is empty</h2><p>Head to ⚡ Forge, speak or type an idea, and save it here.</p></div>';
+    return;
+  }
+  if (!filtered.length) {
+    list.innerHTML = '<p style="color:var(--faint);text-align:center;padding:40px 0">No ideas match "' + esc(search) + '"</p>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(function(idea) {
+    var cc = CPLX_COLORS[idea.complexity] || '#f97316';
+    var date = idea.createdAt ? new Date(idea.createdAt).toLocaleDateString() : '';
+    var confirmHtml = APP.confirmDel === idea.id
+      ? '<div class="confirm-row"><span>Delete "' + esc(idea.name) + '"?</span><div style="display:flex;gap:8px">' +
+          '<button style="padding:5px 12px;border-radius:8px;border:1px solid var(--border);color:var(--muted);font-size:12px;background:transparent;cursor:pointer" data-cancel>Cancel</button>' +
+          '<button style="padding:5px 12px;border-radius:8px;border:1px solid rgba(239,68,68,.3);color:var(--red);font-size:12px;background:rgba(239,68,68,.1);cursor:pointer" data-confirm="' + idea.id + '">Delete</button>' +
+        '</div></div>' : '';
+    return '<div class="idea-row" data-id="' + idea.id + '">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start">' +
+        '<div style="flex:1;padding-right:8px">' +
+          '<div class="ir-name">' + esc(idea.name) + '</div>' +
+          '<div class="ir-tagline">' + esc(idea.tagline) + '</div>' +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+            (idea.complexity ? tag(idea.complexity, cc) : '') +
+            (idea.costEstimate ? tag(idea.costEstimate, '#fbbf24') : '') +
+            (date ? '<span class="tag" style="background:#1e1e2d;color:var(--faint)">' + date + '</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<button class="del-btn" data-del="' + idea.id + '">🗑</button>' +
+      '</div>' + confirmHtml + '</div>';
+  }).join('');
+
+  list.querySelectorAll('.idea-row').forEach(function(row) {
+    row.addEventListener('click', function(e) {
+      if (e.target.closest('.del-btn') || e.target.closest('.confirm-row')) return;
+      var id = row.dataset.id;
+      var idea = APP.ideas.find(function(i){ return i.id === id; });
+      if (idea) { APP.selectedId = id; openDetail(idea); }
+    });
+  });
+  list.querySelectorAll('.del-btn').forEach(function(b) {
+    b.addEventListener('click', function(e) { e.stopPropagation(); APP.confirmDel = b.dataset.del; renderVault(); });
+  });
+  list.querySelectorAll('[data-cancel]').forEach(function(b) {
+    b.addEventListener('click', function(e) { e.stopPropagation(); APP.confirmDel = null; renderVault(); });
+  });
+  list.querySelectorAll('[data-confirm]').forEach(function(b) {
+    b.addEventListener('click', function(e) {
+      e.stopPropagation();
+      removeIdea(b.dataset.confirm);
+      APP.confirmDel = null;
+      renderVault();
+    });
+  });
 }
 
-const COMPLEXITY_COLORS = { Low: '#10b981', Medium: '#fbbf24', High: '#f97316', 'Very High': '#ef4444' };
+el('vault-search').addEventListener('input', renderVault);
 
-// ─── Full Idea View ──────────────────────────────────────────
-function IdeaView({ idea, apiKey, onAmended }) {
-  const [copied, setCopied] = useState(false);
-  const copyPrompt = () => {
-    navigator.clipboard.writeText(idea.claudeCodePrompt || '');
-    setCopied(true); setTimeout(() => setCopied(false), 2500);
-  };
-
-  return (
-    <div className="fade-in">
-      <Card>
-        {/* Header */}
-        <div style={{
-          padding: '22px 20px 18px',
-          background: 'linear-gradient(135deg, rgba(249,115,22,0.13), rgba(251,191,36,0.06))',
-          borderBottom: '1px solid #1e1e2d',
-        }}>
-          <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 30, fontWeight: 800, lineHeight: 1.1, marginBottom: 8 }}>
-            <GradientText>{idea.name}</GradientText>
-          </div>
-          <div style={{ fontSize: 15, fontStyle: 'italic', color: '#eeedf0', opacity: 0.88, lineHeight: 1.5, marginBottom: 12 }}>
-            "{idea.tagline}"
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {idea.complexity && <Tag color={COMPLEXITY_COLORS[idea.complexity]}>{idea.complexity} complexity</Tag>}
-              {idea.buildTime && <Tag color="#60a5fa">{idea.buildTime}</Tag>}
-            </div>
-            <span style={{ fontSize: 11, color: '#4a4960' }}>
-              {idea.createdAt ? new Date(idea.createdAt).toLocaleDateString() : ''}
-            </span>
-          </div>
-          <AmendBox sectionKey="name" sectionLabel="Name & Tagline" idea={idea} apiKey={apiKey} onAmended={onAmended} />
-        </div>
-
-        {/* Body sections */}
-        <div style={{ padding: '0 20px 20px' }}>
-
-          <SectionBlock icon="🎯" label="The Pitch" sectionKey="pitch" idea={idea} apiKey={apiKey} onAmended={onAmended}>
-            <p>{idea.pitch}</p>
-          </SectionBlock>
-
-          <SectionBlock icon="✨" label="Magic Moment" sectionKey="magicMoment" idea={idea} apiKey={apiKey} onAmended={onAmended}>
-            <p>{idea.magicMoment}</p>
-          </SectionBlock>
-
-          {/* Roadmap */}
-          <div style={{ borderTop: '1px solid #1e1e2d', padding: '16px 0' }}>
-            <SectionLabel icon="🗺">Roadmap</SectionLabel>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {[
-                { key: 'v1', label: 'V1 — Launch', color: '#10b981' },
-                { key: 'v2', label: 'V2 — Growth', color: '#60a5fa' },
-                { key: 'future', label: 'Future Vision', color: '#a78bfa' },
-              ].map(({ key, label, color }) => (
-                <div key={key} style={{
-                  background: '#111118', border: '1px solid #1e1e2d',
-                  borderRadius: 12, padding: '12px 14px',
-                }}>
-                  <Tag color={color} style={{ marginBottom: 8 }}>{label}</Tag>
-                  <div style={{ fontSize: 13, color: '#c8c7d4', lineHeight: 1.7, marginTop: 8 }}>
-                    {key === 'future' ? <p>{idea[key]}</p> : <Bullets text={idea[key]} />}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <AmendBox sectionKey="v1" sectionLabel="Roadmap" idea={idea} apiKey={apiKey} onAmended={onAmended} />
-          </div>
-
-          {/* Cost & Complexity */}
-          <div style={{ borderTop: '1px solid #1e1e2d', padding: '16px 0' }}>
-            <SectionLabel icon="💰">Cost & Complexity</SectionLabel>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-              {[
-                { label: 'Complexity', value: idea.complexity, color: COMPLEXITY_COLORS[idea.complexity] || '#f97316' },
-                { label: 'Est. Cost', value: idea.costEstimate, color: '#fbbf24' },
-                { label: 'Build Time', value: idea.buildTime, color: '#60a5fa' },
-                { label: 'Tech', value: idea.techStack, color: '#a78bfa', small: true },
-              ].map(({ label, value, color, small }) => (
-                <div key={label} style={{
-                  background: '#111118', border: '1px solid #1e1e2d',
-                  borderRadius: 10, padding: '12px', textAlign: 'center',
-                }}>
-                  <div style={{ fontSize: 11, color: '#7a7990', marginBottom: 4 }}>{label}</div>
-                  <div style={{
-                    fontFamily: small ? "'DM Sans', sans-serif" : "'Syne', sans-serif",
-                    fontWeight: 700, fontSize: small ? 11 : 14, color, lineHeight: 1.4,
-                  }}>{value}</div>
-                </div>
-              ))}
-            </div>
-            <p style={{ fontSize: 13, color: '#7a7990', lineHeight: 1.6 }}>{idea.complexityReason} {idea.costBreakdown}</p>
-            <AmendBox sectionKey="costEstimate" sectionLabel="Cost & Complexity" idea={idea} apiKey={apiKey} onAmended={onAmended} />
-          </div>
-
-          {/* Landing Page */}
-          <SectionBlock icon="🎨" label="Landing Page & Logo" sectionKey="landingPageConcept" idea={idea} apiKey={apiKey} onAmended={onAmended}>
-            <p style={{ marginBottom: 12 }}>{idea.landingPageConcept}</p>
-            <div style={{
-              padding: '12px 14px', background: '#111118',
-              border: '1px solid #1e1e2d', borderRadius: 10,
-              fontSize: 12, color: '#7a7990', lineHeight: 1.6,
-            }}>
-              💡 <strong style={{ color: '#eeedf0' }}>Generate your image:</strong> Copy this description and paste it into{' '}
-              <a href="https://www.midjourney.com" target="_blank" rel="noreferrer" style={{ color: '#f97316' }}>Midjourney</a>
-              {' '}or{' '}
-              <a href="https://chat.openai.com" target="_blank" rel="noreferrer" style={{ color: '#f97316' }}>ChatGPT's image tool</a>
-              {' '}with prompt: "App landing page hero for {idea.name}: {idea.landingPageConcept}"
-            </div>
-          </SectionBlock>
-
-          {/* Build Prompt */}
-          <div style={{ borderTop: '1px solid #1e1e2d', paddingTop: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <SectionLabel icon="🤖">Build Prompt for Claude</SectionLabel>
-              <button
-                onClick={copyPrompt}
-                style={{
-                  padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                  background: copied ? 'rgba(16,185,129,0.15)' : 'rgba(249,115,22,0.15)',
-                  border: `1px solid ${copied ? 'rgba(16,185,129,0.4)' : 'rgba(249,115,22,0.4)'}`,
-                  color: copied ? '#10b981' : '#f97316', cursor: 'pointer',
-                }}
-              >{copied ? '✓ Copied!' : '📋 Copy'}</button>
-            </div>
-            <div style={{
-              background: '#0d0d14', border: '1px solid #1e1e2d', borderRadius: 12,
-              padding: '14px 16px', fontSize: 13, color: '#c8c7d4', lineHeight: 1.75,
-              fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 240, overflowY: 'auto',
-            }}>
-              {idea.claudeCodePrompt}
-            </div>
-            <p style={{ fontSize: 12, color: '#4a4960', marginTop: 8, lineHeight: 1.5 }}>
-              Copy this and paste it into claude.ai or Claude Code to start building your app.
-            </p>
-            <AmendBox sectionKey="claudeCodePrompt" sectionLabel="Build Prompt" idea={idea} apiKey={apiKey} onAmended={onAmended} />
-          </div>
-        </div>
-      </Card>
-    </div>
-  );
+// ══════════════════════════════════
+// DETAIL
+// ══════════════════════════════════
+function openDetail(idea) {
+  el('detail-card').innerHTML = buildCard(idea, 'detail');
+  bindCard('detail', idea);
+  goScreen('detail');
 }
 
-// ─── API Key Gate ────────────────────────────────────────────
-function ApiKeyGate({ onSave }) {
-  const [key, setKey] = useState('');
-  const [err, setErr] = useState('');
-
-  const submit = () => {
-    if (!key.trim()) { setErr('Please enter your API key.'); return; }
-    if (!key.trim().startsWith('sk-ant-')) { setErr('That doesn\'t look right. Anthropic keys start with sk-ant-'); return; }
-    onSave(key.trim());
-  };
-
-  return (
-    <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 24, background: 'var(--bg)',
-    }}>
-      <div style={{
-        background: '#16161f', border: '1px solid #252535', borderRadius: 24,
-        padding: '36px 28px', maxWidth: 420, width: '100%',
-      }}>
-        <div style={{
-          fontFamily: "'Syne', sans-serif", fontSize: 34, fontWeight: 800, marginBottom: 6,
-          background: 'linear-gradient(135deg,#f97316,#fbbf24)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-        }}>IdeaForge ⚡</div>
-        <p style={{ color: '#7a7990', fontSize: 14, lineHeight: 1.7, marginBottom: 8 }}>
-          Your personal AI-powered app idea studio. Speak or type a rough idea and get a full product concept instantly.
-        </p>
-        <p style={{ color: '#7a7990', fontSize: 14, lineHeight: 1.7, marginBottom: 24 }}>
-          To get started you need a free Anthropic API key. It stays on your device only — never shared anywhere.
-        </p>
-
-        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#7a7990', marginBottom: 8 }}>
-          Anthropic API Key
-        </label>
-        <input
-          type="password" placeholder="sk-ant-api03-..."
-          value={key} onChange={e => { setKey(e.target.value); setErr(''); }}
-          onKeyDown={e => e.key === 'Enter' && submit()}
-          style={{
-            width: '100%', background: '#111118',
-            border: `1px solid ${err ? '#ef4444' : '#252535'}`,
-            borderRadius: 12, padding: '14px 16px', color: '#eeedf0',
-            fontSize: 14, fontFamily: 'monospace', outline: 'none',
-            marginBottom: err ? 8 : 20, letterSpacing: '0.5px',
-          }}
-        />
-        {err && <p style={{ color: '#ef4444', fontSize: 13, marginBottom: 14 }}>{err}</p>}
-
-        <button onClick={submit} style={{
-          width: '100%', padding: 15,
-          background: 'linear-gradient(135deg,#f97316,#fbbf24)',
-          border: 'none', borderRadius: 12, color: '#fff',
-          fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 800,
-          cursor: 'pointer', letterSpacing: 0.3,
-        }}>Enter IdeaForge →</button>
-
-        <p style={{ marginTop: 16, fontSize: 12, color: '#4a4960', textAlign: 'center', lineHeight: 1.6 }}>
-          Get your free key at{' '}
-          <a href="https://console.anthropic.com" target="_blank" rel="noreferrer"
-            style={{ color: '#f97316', textDecoration: 'underline' }}>console.anthropic.com</a>
-        </p>
-      </div>
-    </div>
-  );
+function renderDetail() {
+  if (!APP.selectedId) { goScreen('vault'); return; }
+  var idea = APP.ideas.find(function(i){ return i.id === APP.selectedId; });
+  if (!idea) { goScreen('vault'); return; }
+  el('detail-card').innerHTML = buildCard(idea, 'detail');
+  bindCard('detail', idea);
 }
 
-// ─── Forge Screen ─────────────────────────────────────────────
-function ForgeScreen({ apiKey, onSave }) {
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [loadMsg, setLoadMsg] = useState('');
-  const [result, setResult] = useState(null);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState('');
+el('back-btn').addEventListener('click', function() { goScreen('vault'); });
 
-  const msgs = ['Shaping your idea...', 'Finding the perfect name...', 'Mapping the roadmap...', 'Crunching the costs...', 'Writing your build prompt...', 'Almost there...'];
+el('detail-del').addEventListener('click', function() {
+  var idea = APP.ideas.find(function(i){ return i.id === APP.selectedId; });
+  if (!idea) return;
+  if (window.confirm('Delete "' + idea.name + '"? This cannot be undone.')) {
+    removeIdea(APP.selectedId);
+    APP.selectedId = null;
+    goScreen('vault');
+  }
+});
 
-  const forge = async () => {
-    if (!input.trim() || loading) return;
-    setLoading(true); setError(''); setResult(null); setSaved(false);
-    let i = 0; setLoadMsg(msgs[0]);
-    const iv = setInterval(() => { i = (i + 1) % msgs.length; setLoadMsg(msgs[i]); }, 2200);
-    try {
-      const idea = await brainstormIdea(apiKey, input.trim());
-      setResult({ ...idea, id: Date.now().toString(), rawIdea: input.trim(), createdAt: new Date().toISOString() });
-    } catch (e) {
-      setError(e.message || 'Something went wrong. Check your API key and try again.');
-    } finally { clearInterval(iv); setLoading(false); }
-  };
-
-  const handleAmend = (updated) => {
-    setResult(updated);
-    if (saved) { onSave(updated); }
-  };
-
-  return (
-    <div style={{ padding: '20px 16px 48px' }}>
-      {/* Hero */}
-      <div style={{ textAlign: 'center', padding: '20px 0 24px' }}>
-        <h1 style={{ fontSize: 27, fontWeight: 800, marginBottom: 8 }}>
-          What's your <GradientText>next big idea?</GradientText>
-        </h1>
-        <p style={{ color: '#7a7990', fontSize: 14 }}>
-          Speak or type it rough — IdeaForge shapes it into a full product concept.
-        </p>
-      </div>
-
-      <VoiceInput
-        value={input} onChange={setInput}
-        placeholder="e.g. An app that helps parents track their kids' reading habits and gives them rewards..."
-        onSubmit={forge}
-        submitLabel="⚡ Forge It"
-        rows={3} disabled={loading}
-      />
-
-      {/* Loading */}
-      {loading && (
-        <div style={{ textAlign: 'center', padding: '56px 24px' }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: '50%', margin: '0 auto 20px',
-            border: '3px solid #252535', borderTopColor: '#f97316',
-            animation: 'spin 0.75s linear infinite',
-          }} />
-          <p style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 16, color: '#eeedf0', marginBottom: 6 }}>{loadMsg}</p>
-          <p style={{ color: '#4a4960', fontSize: 13 }}>The AI is thinking deeply about your idea...</p>
-        </div>
-      )}
-
-      {/* Error */}
-      {error && (
-        <div style={{
-          marginTop: 16, padding: '14px 16px',
-          background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
-          borderRadius: 12, color: '#ef4444', fontSize: 14,
-        }}>⚠ {error}</div>
-      )}
-
-      {/* Result */}
-      {result && !loading && (
-        <div style={{ marginTop: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 800 }}>Your Concept ✨</h2>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Btn
-                variant={saved ? 'success' : 'orange'}
-                small
-                onClick={() => { onSave(result); setSaved(true); }}
-                disabled={saved}
-              >{saved ? '✓ Saved to Vault' : '💾 Save to Vault'}</Btn>
-            </div>
-          </div>
-
-          <IdeaView idea={result} apiKey={apiKey} onAmended={handleAmend} />
-
-          <div style={{ textAlign: 'center', marginTop: 20 }}>
-            <Btn variant="ghost" onClick={() => { setResult(null); setInput(''); setSaved(false); }}>
-              ⚡ Forge another idea
-            </Btn>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Vault Screen ─────────────────────────────────────────────
-function VaultScreen({ ideas, onOpen, onDelete }) {
-  const [search, setSearch] = useState('');
-  const [confirmDel, setConfirmDel] = useState(null);
-
-  const filtered = ideas.filter(idea =>
-    !search || [idea.name, idea.tagline, idea.rawIdea, idea.pitch].some(f => f?.toLowerCase().includes(search.toLowerCase()))
-  );
-
-  if (ideas.length === 0) return (
-    <div style={{ padding: '64px 24px', textAlign: 'center' }}>
-      <div style={{ fontSize: 52, marginBottom: 16 }}>📦</div>
-      <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Your vault is empty</h2>
-      <p style={{ color: '#7a7990', fontSize: 14, lineHeight: 1.7 }}>
-        Head to the ⚡ Forge tab, speak or type an idea,<br />and save it here to build your collection.
-      </p>
-    </div>
-  );
-
-  return (
-    <div style={{ padding: '20px 16px 48px' }}>
-      <div style={{ marginBottom: 18 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 3 }}>Your Ideas</h2>
-        <p style={{ color: '#7a7990', fontSize: 13 }}>{ideas.length} idea{ideas.length !== 1 ? 's' : ''} saved</p>
-      </div>
-
-      {/* Search */}
-      <div style={{ position: 'relative', marginBottom: 16 }}>
-        <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 15, pointerEvents: 'none' }}>🔍</span>
-        <input
-          type="text" placeholder="Search your ideas..."
-          value={search} onChange={e => setSearch(e.target.value)}
-          style={{
-            width: '100%', background: '#111118', border: '1px solid #252535',
-            borderRadius: 12, padding: '12px 14px 12px 38px', color: '#eeedf0',
-            fontSize: 14, outline: 'none', fontFamily: "'DM Sans', sans-serif",
-          }}
-        />
-      </div>
-
-      {filtered.length === 0 ? (
-        <p style={{ color: '#4a4960', textAlign: 'center', padding: '40px 0' }}>No ideas match "{search}"</p>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {filtered.map(idea => (
-            <div key={idea.id} style={{
-              background: '#16161f', border: '1px solid #252535', borderRadius: 16, padding: 16,
-              cursor: 'pointer', transition: 'all 0.15s',
-            }}
-              onClick={() => onOpen(idea)}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = '#f97316'; e.currentTarget.style.background = '#1c1c28'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = '#252535'; e.currentTarget.style.background = '#16161f'; }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1, paddingRight: 8 }}>
-                  <div style={{
-                    fontFamily: "'Syne', sans-serif", fontSize: 19, fontWeight: 800, lineHeight: 1.2, marginBottom: 4,
-                    background: 'linear-gradient(135deg,#f97316,#fbbf24)',
-                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                  }}>{idea.name}</div>
-                  <div style={{ fontSize: 13, color: '#7a7990', fontStyle: 'italic', marginBottom: 10, lineHeight: 1.5 }}>
-                    {idea.tagline}
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {idea.complexity && <Tag color={COMPLEXITY_COLORS[idea.complexity] || '#f97316'}>{idea.complexity}</Tag>}
-                    {idea.costEstimate && <Tag color="#fbbf24">{idea.costEstimate}</Tag>}
-                    <Tag color="#4a4960" bg="#1e1e2d">{new Date(idea.createdAt).toLocaleDateString()}</Tag>
-                  </div>
-                </div>
-                <button
-                  onClick={e => { e.stopPropagation(); setConfirmDel(idea.id); }}
-                  style={{ background: 'none', border: 'none', fontSize: 16, color: '#4a4960', padding: 4, cursor: 'pointer', flexShrink: 0 }}
-                >🗑</button>
-              </div>
-
-              {confirmDel === idea.id && (
-                <div onClick={e => e.stopPropagation()} style={{
-                  marginTop: 12, padding: '12px 14px',
-                  background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
-                  borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-                }}>
-                  <span style={{ fontSize: 13, color: '#ef4444' }}>Delete "{idea.name}"?</span>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <Btn variant="ghost" small onClick={() => setConfirmDel(null)}>Cancel</Btn>
-                    <Btn variant="danger" small onClick={() => { onDelete(idea.id); setConfirmDel(null); }}>Delete</Btn>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Detail Screen ────────────────────────────────────────────
-function DetailScreen({ idea, apiKey, onUpdate, onDelete, onBack }) {
-  return (
-    <div style={{ padding: '16px 16px 48px' }}>
-      <button onClick={onBack} style={{
-        background: 'none', border: 'none', color: '#7a7990', fontSize: 14,
-        cursor: 'pointer', padding: '8px 0', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6,
-      }}>← Back to Vault</button>
-
-      <IdeaView idea={idea} apiKey={apiKey} onAmended={(updated) => { onUpdate(updated); }} />
-
-      <div style={{ textAlign: 'center', marginTop: 24 }}>
-        <Btn variant="danger" onClick={() => {
-          if (window.confirm(`Delete "${idea.name}"? This cannot be undone.`)) onDelete(idea.id);
-        }}>🗑 Delete this idea</Btn>
-      </div>
-    </div>
-  );
-}
-
-// ─── Nav ──────────────────────────────────────────────────────
-function Nav({ screen, go, count, onSettings }) {
-  return (
-    <nav style={{
-      position: 'sticky', top: 0, zIndex: 100,
-      background: 'rgba(10,10,15,0.93)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-      borderBottom: '1px solid #1e1e2d', height: 56, padding: '0 16px',
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    }}>
-      <div onClick={() => go('forge')} style={{
-        fontFamily: "'Syne', sans-serif", fontSize: 20, fontWeight: 800, cursor: 'pointer',
-        background: 'linear-gradient(135deg,#f97316,#fbbf24)',
-        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', userSelect: 'none',
-      }}>IdeaForge ⚡</div>
-
-      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-        {[
-          { id: 'forge', label: '⚡ Forge' },
-          { id: 'vault', label: `📦 Vault${count > 0 ? ` (${count})` : ''}` },
-        ].map(t => (
-          <button key={t.id} onClick={() => go(t.id)} style={{
-            padding: '6px 14px', borderRadius: 20, fontSize: 13, fontWeight: 500,
-            background: (screen === t.id || (screen === 'detail' && t.id === 'vault')) ? '#f97316' : 'transparent',
-            color: (screen === t.id || (screen === 'detail' && t.id === 'vault')) ? '#fff' : '#7a7990',
-            border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
-          }}>{t.label}</button>
-        ))}
-        <button onClick={onSettings} title="API Key Settings" style={{
-          background: 'none', border: 'none', color: '#4a4960', fontSize: 18, padding: '4px 6px', cursor: 'pointer',
-        }}>⚙</button>
-      </div>
-    </nav>
-  );
-}
-
-// ─── Root App ─────────────────────────────────────────────────
-function App() {
-  const [apiKey, setApiKey] = useState('');
-  const [showKeyGate, setShowKeyGate] = useState(false);
-  const [screen, setScreen] = useState('forge');
-  const [ideas, setIdeas] = useState([]);
-  const [selected, setSelected] = useState(null);
-
-  useEffect(() => {
-    const k = loadKey();
-    const i = loadIdeas();
-    setApiKey(k);
-    setIdeas(i);
-    if (!k) setShowKeyGate(true);
-  }, []);
-
-  const saveApiKey = (k) => { saveKey(k); setApiKey(k); setShowKeyGate(false); };
-
-  const saveIdea = (idea) => {
-    const updated = [idea, ...ideas.filter(i => i.id !== idea.id)];
-    setIdeas(updated); saveIdeas(updated);
-  };
-
-  const deleteIdea = (id) => {
-    const updated = ideas.filter(i => i.id !== id);
-    setIdeas(updated); saveIdeas(updated);
-    if (selected?.id === id) { setSelected(null); setScreen('vault'); }
-  };
-
-  const updateIdea = (idea) => {
-    const updated = ideas.map(i => i.id === idea.id ? idea : i);
-    setIdeas(updated); saveIdeas(updated); setSelected(idea);
-  };
-
-  const go = (s) => { setScreen(s); if (s !== 'detail') setSelected(null); };
-
-  if (showKeyGate) return <ApiKeyGate onSave={saveApiKey} />;
-
-  return (
-    <div style={{ minHeight: '100vh' }}>
-      <Nav
-        screen={screen}
-        go={go}
-        count={ideas.length}
-        onSettings={() => setShowKeyGate(true)}
-      />
-      <main style={{ maxWidth: 640, margin: '0 auto', width: '100%' }}>
-        {screen === 'forge' && <ForgeScreen apiKey={apiKey} onSave={saveIdea} />}
-        {screen === 'vault' && (
-          <VaultScreen
-            ideas={ideas}
-            onOpen={idea => { setSelected(idea); setScreen('detail'); }}
-            onDelete={deleteIdea}
-          />
-        )}
-        {screen === 'detail' && selected && (
-          <DetailScreen
-            idea={selected} apiKey={apiKey}
-            onUpdate={updateIdea} onDelete={deleteIdea}
-            onBack={() => go('vault')}
-          />
-        )}
-      </main>
-    </div>
-  );
-}
-
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+// ══════════════════════════════════
+// INIT
+// ══════════════════════════════════
+loadStorage();
+showGate(!APP.apiKey);
 </script>
 </body>
 </html>
